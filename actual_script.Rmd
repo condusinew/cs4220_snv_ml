@@ -61,16 +61,7 @@ alltruth_df <- alltruth_df %>% mutate(TRUTH = TRUE)
 df3 <- all_df %>% 
   left_join(alltruth_df, by=c('Chr','START_POS_REF', 'END_POS_REF'))
 
-
-all_df <- all_df %>%
-  left_join(alltruth_df %>% mutate(correct = TRUE), 
-            by = c("Chr", "START_POS_REF", "END_POS_REF")) 
- 
-
-all_df <- all_df %>%
-  mutate(correct = any(alltruth_df$Chr == Chr & alltruth_df$START_POS_REF == START_POS_REF &
-                         alltruth_df$END_POS_REF == END_POS_REF))
-
+df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
 ```
 
 

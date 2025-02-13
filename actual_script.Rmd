@@ -1,0 +1,109 @@
+---
+getwd(title: "ML project"
+output: html_document
+date: "2025-02-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("/Users/cindyyu/Desktop/CS4220")
+library(readxl)
+library(tidyverse)
+library(caTools)
+```
+
+#READING IN FILTER PREDICTIONS
+```{r}
+real1_df <- read.table("snv-parse-real1.txt", header = T)
+real2.1_df <- read.table("snv-parse-real2_part1.txt", header = T)
+syn1_df <- read.table("snv-parse-syn1.txt", header = T)
+syn2_df <- read.table("snv-parse-syn2.txt", header = T)
+syn3_df <- read.table("snv-parse-syn3.txt", header = T)
+syn4_df <- read.table("snv-parse-syn4.txt", header = T)
+syn5_df <- read.table("snv-parse-syn5.txt", header = T)
+
+all_df <- rbind(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
+```
+
+#READING IN TRUTHS
+
+```{r}
+#add headers: chromosome #, genomic start, genomic stop
+real1_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/real1/real1_truth.bed",
+                                header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+real2.1_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/real2_part1/real2_truth_chr1to5.bed",
+                                header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+syn1_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn1/syn1_truth.bed",
+                                header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+syn2_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn2/syn2_truth.bed",
+                                header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+syn3_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn3/syn3_truth.bed",
+                                header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+syn4_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn4/syn4_truth.bed",
+                                header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+syn5_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn5/syn5_truth.bed",
+                                header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+alltruth_df <- rbind(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
+
+names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
+```
+
+```{r}
+#thought: should we weight the real information more?
+#GET RID OF CORREXT X AND Y
+#MAKE COLUMN ALL TRUE IN ALL TRUTH
+alltruth_df <- alltruth_df %>% mutate(TRUTH = TRUE)
+
+
+df3 <- all_df %>% 
+  left_join(alltruth_df, by=c('Chr','START_POS_REF', 'END_POS_REF'))
+
+
+all_df <- all_df %>%
+  left_join(alltruth_df %>% mutate(correct = TRUE), 
+            by = c("Chr", "START_POS_REF", "END_POS_REF")) 
+ 
+
+all_df <- all_df %>%
+  mutate(correct = any(alltruth_df$Chr == Chr & alltruth_df$START_POS_REF == START_POS_REF &
+                         alltruth_df$END_POS_REF == END_POS_REF))
+
+```
+
+
+
+#CREATING BENCHMARKS 
+
+## consensus between at least 2
+```{r}
+consensus_df <- all_df %>%
+  mutate(two_plus = rowSums(select(., FILTER_Mutect2, FILTER_Freebayes, FILTER_Varscan, FILTER_Vardict)) >= 2)
+```
+
+
+#MACHINE LEARNING 
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

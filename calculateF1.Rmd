@@ -14,7 +14,7 @@ This notebook calculates F1 statistics (precision score, recall score and F1 sco
 # clean current envrionement variables
 rm(list = ls())
 # set your current working directory
-setwd("~/OneDrive/Work/Teaching/CS4220 2022/Project/Data/calculateF1"); print(getwd())
+setwd("/Users/cindyyu/Desktop/EEB313/cs4220_snv_ml"); print(getwd())
 ```
 
 
@@ -44,7 +44,7 @@ calc.F1 = function(pred,truth) {
 
 # load ground truth and predictions
 truth = read.table('real1_truth.bed', header = F)
-mypred = read.table('my-real1-predictions.bed', header = T)
+mypred = read.table('my-real1-predictions.bed', header = FALSE) #changed to header = false
 
 head(truth); head(mypred)
 

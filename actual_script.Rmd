@@ -80,14 +80,30 @@ consensus_df <- all_df %>%
 #MACHINE LEARNING 
 
 ```{r}
+#splitting
 split_vals <- sample.split(df3$TRUTH, SplitRatio = 0.65)
 train_set <- subset(df3, split_vals = TRUE)
 test_set <- subset(df3, split_vals = FALSE)
 
-
+#model
 rpart(as.factor(TRUTH)~., data = train_set) -> mod_class
 predict(mod_class, test_set, type = 'class') -> result_class
 table(test_set$TRUTH, result_class)
+
+#refitting predictions to be bed file
+predictions <- data.frame(Chr = df3$Chr,
+                          START_POS_REF = df3$START_POS_REF,
+                          END_POS_REF = df3$START_POS_REF, 
+                          TRUTH=result_class)
+
+real1_predictions <- predictions[1:49320, ] |>
+  filter(TRUTH == TRUE) 
+
+real1_predictions <- predictions[, -4]
+
+write.table(real1_predictions, "my-real1-predictions",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+
+
 ```
 
 

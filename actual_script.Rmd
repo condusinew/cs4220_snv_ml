@@ -62,6 +62,8 @@ df3 <- all_df %>%
   left_join(alltruth_df, by=c('Chr','START_POS_REF', 'END_POS_REF'))
 
 df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
+
+
 ```
 
 
@@ -78,7 +80,14 @@ consensus_df <- all_df %>%
 #MACHINE LEARNING 
 
 ```{r}
+split_vals <- sample.split(df3$TRUTH, SplitRatio = 0.65)
+train_set <- subset(df3, split_vals = TRUE)
+test_set <- subset(df3, split_vals = FALSE)
 
+
+rpart(as.factor(TRUTH)~., data = train_set) -> mod_class
+predict(mod_class, test_set, type = 'class') -> result_class
+table(test_set$TRUTH, result_class)
 ```
 
 

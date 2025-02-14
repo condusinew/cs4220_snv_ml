@@ -13,6 +13,13 @@ setwd("/Users/cindyyu/Desktop/CS4220")
 library(readxl)
 library(tidyverse)
 library(caTools)
+
+#prob dont need this later
+library(rpart)
+
+#random forest
+install.packages("randomForest")
+library(randomForest)
 ```
 
 #READING IN FILTER PREDICTIONS
@@ -78,34 +85,61 @@ consensus_df <- all_df %>%
 
 
 #MACHINE LEARNING 
+```{r}
+#replace NAs
+df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
+```
+
+
 
 ```{r}
+#remove chr and genomic start/stop
+
 #splitting
-split_vals <- sample.split(df3$TRUTH, SplitRatio = 0.65)
-train_set <- subset(df3, split_vals = TRUE)
-test_set <- subset(df3, split_vals = FALSE)
+#SOMEHOW REMOVE COLUMNS OF GENOME NUMBER AND CHR
+split_vals <- sample.split(df3$TRUTH, SplitRatio = 0.80)
+train_set <- subset(df3, split_vals == TRUE)
+test_set <- subset(df3, split_vals == FALSE)
+
+train_set_split <- train_set[,-(1:8)]
 
 #model
-rpart(as.factor(TRUTH)~., data = train_set) -> mod_class
+rpart(as.factor(TRUTH)~ ., data = train_set_split) -> mod_class
 predict(mod_class, test_set, type = 'class') -> result_class
 table(test_set$TRUTH, result_class)
 
 #refitting predictions to be bed file
-predictions <- data.frame(Chr = df3$Chr,
-                          START_POS_REF = df3$START_POS_REF,
-                          END_POS_REF = df3$START_POS_REF, 
+#REALIZED I SHOULDNT HAVE UPENDED TO DF3, BUT RATHER TEST SET!
+predictions <- data.frame(Chr = test_set$Chr,
+                          START_POS_REF = test_set$START_POS_REF,
+                          END_POS_REF = test_set$END_POS_REF, 
                           TRUTH=result_class)
 
-real1_predictions <- predictions[1:49320, ] |>
+real1_predictions <- predictions |>
   filter(TRUTH == TRUE) 
 
 real1_predictions <- predictions[, -4]
 
-write.table(real1_predictions, "my-real1-predictions",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(real1_predictions, "my-real1-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
 
+
+#change columsn to remove chromo number
+#treat diff samples differently
 
 ```
 
+#RANDOM FOREST ATTEMPT
+```{r}
+set.seed(3)
+
+id <- sample(2, nrow(df3), prob = c(0.7, 0.3), replace = TRUE)
+train_set <- df3[id==1, ]
+test_set <- df3[id==2, ]
+
+#need some way to get NAs out > research what to do w NA 
+bestmtry <- tuneRF(train_set, train_set$TRUTH,
+                   stepFactor = 1.2, improve = 0.01, trace = T, plot = T)
+```
 
 
 

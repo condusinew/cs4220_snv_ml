@@ -22,6 +22,8 @@ setwd("/Users/cindyyu/Desktop/EEB313/cs4220_snv_ml"); print(getwd())
 
 ```{r evaluateclassifier}
 
+
+
 calc.F1 = function(pred,truth) {
   
   # append 'Chr' and 'StartPos'
@@ -43,7 +45,7 @@ calc.F1 = function(pred,truth) {
 }
 
 # load ground truth and predictions
-truth = read.table('real1_truth.bed', header = F)
+truth = read.table('/Users/cindyyu/Desktop/CS4220/Data/real1_truth.bed', header = F)
 mypred = read.table('my-real1-predictions.bed', header = FALSE) #changed to header = false
 
 head(truth); head(mypred)

@@ -44,11 +44,10 @@ calc.F1 = function(pred,truth) {
   return(res)
 }
 
-#GET ALL TRUTH INTO ONE DF OR SMTH
-getwd()
+
 # load ground truth and predictions FOR REAL1
 truth = read.table('all_truths.bed', header = F)
-mypred = read.table('my-real1-predictions.bed', header = FALSE) #changed to header = false
+mypred = read.table('my-predictions.bed', header = FALSE) #changed to header = false
 
 f1stats = calc.F1(mypred,truth)
 
@@ -56,22 +55,43 @@ print(f1stats)
 
 
 # load ground truth and predictions (from consensus predictions)
-truth = read.table('/Users/cindyyu/Desktop/CS4220/Data/real1_truth.bed', header = F)
 mypred = read.table('my-consensus-predictions.bed', header = FALSE) #changed to header = false
-
 f1stats = calc.F1(mypred,truth)
 
 print(f1stats)
 
 
-# load ground truth and predictions (from consensus predictions)
-truth = read.table('/Users/cindyyu/Desktop/CS4220/Data/real1_truth.bed', header = F)
-mypred = read.table('my-consensus-predictions.bed', header = FALSE) #changed to header = false
-
+# load ground truth and predictions (from MUTECT predictions)
+mypred = read.table("my-m2-predictions.bed", header = FALSE) #changed to header = false
 f1stats = calc.F1(mypred,truth)
 
 print(f1stats)
 
+#FREEBAYES
+mypred = read.table("my-f-predictions.bed", header = FALSE) #changed to header = false
+f1stats = calc.F1(mypred,truth)
+
+print(f1stats)
+
+
+#VD
+mypred = read.table("my-vd-predictions.bed", header = FALSE) #changed to header = false
+f1stats = calc.F1(mypred,truth)
+
+print(f1stats)
+
+
+#VS
+mypred = read.table("my-vs-predictions.bed", header = FALSE) #changed to header = false
+f1stats = calc.F1(mypred,truth)
+
+print(f1stats)
+
+#BEST TWO
+mypred = read.table("best-two-predictions.bed", header = FALSE) #changed to header = false
+f1stats = calc.F1(mypred,truth)
+
+print(f1stats)
 
 ```
 

@@ -18,8 +18,8 @@ library(caTools)
 library(rpart)
 
 #random forest
-install.packages("randomForest")
 library(randomForest)
+
 ```
 
 #READING IN FILTER PREDICTIONS
@@ -56,21 +56,18 @@ syn5_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn5/
 alltruth_df <- rbind(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
 
 names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
+
+write.table(alltruth_df, "all_truths.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
-```{r}
-#thought: should we weight the real information more?
-#GET RID OF CORREXT X AND Y
-#MAKE COLUMN ALL TRUE IN ALL TRUTH
-alltruth_df <- alltruth_df %>% mutate(TRUTH = TRUE)
 
+```{r}
+alltruth_df <- alltruth_df %>% mutate(TRUTH = TRUE)
 
 df3 <- all_df %>% 
   left_join(alltruth_df, by=c('Chr','START_POS_REF', 'END_POS_REF'))
 
 df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
-
-
 
 ```
 
@@ -93,27 +90,41 @@ write.table(consensus_predictions, "my-consensus-predictions.bed",row.names = F,
 
 ## find best languages
 ```{r}
-#MUTECT2
+#MUTECT2 F1 = 0.79
 m2_predictions <- all_df |>
   filter(FILTER_Mutect2)
 
 write.table(m2_predictions, "my-m2-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
-#FREEBAYES
+#FREEBAYES F1 = 0.75
 f_predictions <- all_df |>
   filter(FILTER_Freebayes)
 
 write.table(f_predictions, "my-f-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
+#VARDICT F1 = 0.767
 vd_predictions <- all_df |>
   filter(FILTER_Vardict)
 
 write.table(vd_predictions, "my-vd-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
+#VARSCAN = 0.337
 vs_predictions <- all_df |>
   filter(FILTER_Varscan)
 
 write.table(vs_predictions, "my-vs-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+```
+
+## CONSENSUS BETWEEN VARDICT AND MUTECT2, THE BEST ONES
+```{r}
+#F1 = 0.927
+best_two_df <- all_df %>%
+  filter(FILTER_Mutect2 == TRUE & FILTER_Vardict == TRUE)
+
+best_two_predictions <- best_two_df[, -4]
+
+write.table(best_two_predictions, "best-two-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+
 ```
 
 
@@ -148,12 +159,12 @@ predictions <- data.frame(Chr = test_set$Chr,
                           END_POS_REF = test_set$END_POS_REF, 
                           TRUTH=result_class)
 
-real1_predictions <- predictions |>
+predictions <- predictions |>
   filter(TRUTH == TRUE) 
 
-real1_predictions <- predictions[, -4]
+my_predictions <- predictions[, -4]
 
-write.table(real1_predictions, "my-real1-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(my_predictions, "my-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
 
 
 #change columsn to remove chromo number

@@ -19,7 +19,7 @@ library(rpart)
 
 #random forest
 library(randomForest)
-
+library(caret)
 ```
 
 #READING IN FILTER PREDICTIONS
@@ -175,8 +175,13 @@ write.table(my_predictions, "my-predictions.bed",row.names = F,col.names = F, se
 #RANDOM FOREST ATTEMPT - CINDY
 ```{r}
 #need some way to get NAs out > research what to do w NA 
-bestmtry <- tuneRF(train_set, train_set$TRUTH,
-                   stepFactor = 1.2, improve = 0.01, trace = T, plot = T)
+set.seed(222)
+ind <- sample(2, nrow(df3_narm), replace = TRUE, prob = c(0.7, 0.3))
+train <- df3_narm[ind==1,]
+test <- df3_narm[ind==2,]
+
+rf <- randomForest(TRUTH~., data=train, proximity=TRUE) 
+print(rf)
 ```
 
 

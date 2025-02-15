@@ -183,7 +183,7 @@ test <- df3_narm[ind==2,]
 rf <- randomForest(TRUTH~., data=train, proximity=TRUE) 
 print(rf)
 ```
-
+#LALALALALALAL
 
 
 

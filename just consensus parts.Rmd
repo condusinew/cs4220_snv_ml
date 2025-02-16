@@ -12,12 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 setwd("/Users/cindyyu/Desktop/CS4220")
 library(readxl)
 library(tidyverse)
-library(caTools)
 
 #random forest
-library(randomForest)
-library(caret)
 library(VIM)
+library(dplyr)
 ```
 
 #READING IN FILTER PREDICTIONS
@@ -31,7 +29,6 @@ syn4_df <- read.table("snv-parse-syn4.txt", header = T)
 syn5_df <- read.table("snv-parse-syn5.txt", header = T)
 
 all_df <- rbind(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
-rm(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
 ```
 
 #READING IN TRUTHS
@@ -57,7 +54,6 @@ alltruth_df <- rbind(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_tr
 names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
 
 write.table(alltruth_df, "all_truths.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-rm(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
 ```
 
 
@@ -71,73 +67,58 @@ df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
 
 ```
 
+#CREATING BENCHMARKS 
 
-
-#DATA IMPUTATION
+## consensus between at least 2
 ```{r}
-#replace NAs
-df3_narm <- df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
+#F1 = 0.02754307
+consensus_df <- all_df %>%
+  mutate(two_plus = rowSums(select(., FILTER_Mutect2, FILTER_Freebayes, FILTER_Varscan, FILTER_Vardict)) >= 2) |>
+  filter(two_plus == TRUE)
 
-df3 <- df3 %>% mutate_at(c('FILTER_Mutect2', 'FILTER_Freebayes', 'FILTER_Vardict', 'FILTER_Varscan'), as.numeric)
+consensus_predictions <- consensus_df[, -4]
 
-df3[, 13:18] <- scale(df3[, 13:18])
-
-
-rm(all_df, alltruth_df, real1_df, real2.1_df, syn1_df,syn2_df, syn3_df, syn4_df, syn5_df)
-
-kNN(df3, k=3)
-```
-
-#MACHINE LEARNING 
-```{r}
-#remove chr and genomic start/stop
-
-#splitting
-#SOMEHOW REMOVE COLUMNS OF GENOME NUMBER AND CHR
-split_vals <- sample.split(df3_narm $TRUTH, SplitRatio = 0.80)
-train_set <- subset(df3_narm, split_vals == TRUE)
-test_set <- subset(df3_narm, split_vals == FALSE)
-
-train_set_split <- train_set[,-(1:8)]
-
-#model
-rpart(as.factor(TRUTH)~ ., data = train_set_split) -> mod_class
-predict(mod_class, test_set, type = 'class') -> result_class
-table(test_set$TRUTH, result_class)
-
-#refitting predictions to be bed file
-#REALIZED I SHOULDNT HAVE UPENDED TO DF3, BUT RATHER TEST SET!
-predictions <- data.frame(Chr = test_set$Chr,
-                          START_POS_REF = test_set$START_POS_REF,
-                          END_POS_REF = test_set$END_POS_REF, 
-                          TRUTH=result_class)
-
-predictions <- predictions |>
-  filter(TRUTH == TRUE) 
-
-my_predictions <- predictions[, -4]
-
-write.table(my_predictions, "my-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
-
-
-#change columsn to remove chromo number
-#treat diff samples differently
+write.table(consensus_predictions, "my-consensus-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
 
 ```
 
-#RANDOM FOREST ATTEMPT - CINDY
+## find best languages
 ```{r}
+#MUTECT2 F1 = 0.79
+m2_predictions <- all_df |>
+  filter(FILTER_Mutect2)
 
+write.table(m2_predictions, "my-m2-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
+#FREEBAYES F1 = 0.75
+f_predictions <- all_df |>
+  filter(FILTER_Freebayes)
 
+write.table(f_predictions, "my-f-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
+#VARDICT F1 = 0.767
+vd_predictions <- all_df |>
+  filter(FILTER_Vardict)
 
+write.table(vd_predictions, "my-vd-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
+#VARSCAN = 0.337
+vs_predictions <- all_df |>
+  filter(FILTER_Varscan)
 
+write.table(vs_predictions, "my-vs-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+```
 
+## CONSENSUS BETWEEN VARDICT AND MUTECT2, THE BEST ONES
+```{r}
+#F1 = 0.927
+best_two_df <- all_df %>%
+  filter(FILTER_Mutect2 == TRUE & FILTER_Vardict == TRUE)
 
+best_two_predictions <- best_two_df[, -4]
 
+write.table(best_two_predictions, "best-two-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
 
-
+```
 
 

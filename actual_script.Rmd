@@ -79,7 +79,7 @@ df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
 df3_narm <- df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
 
 #grouped replacing NAs w mean 
-df4 <- df3 %>%
+df_groupmean <- df3 %>%
   group_by(FILTER_Mutect2) %>%
   mutate(m2_MQ = ifelse(is.na(m2_MQ), mean(m2_MQ, na.rm = TRUE), m2_MQ)) |>
   ungroup() %>%
@@ -99,6 +99,25 @@ df4 <- df3 %>%
   mutate(vs_SPV = ifelse(is.na(vs_SPV), mean(vs_SPV, na.rm = TRUE), vs_SPV)) %>%
   ungroup()
 
+df_groupmedian <- df3 %>%
+  group_by(FILTER_Mutect2) %>%
+  mutate(m2_MQ = ifelse(is.na(m2_MQ), median(m2_MQ, na.rm = TRUE), m2_MQ)) |>
+  ungroup() %>%
+  group_by(FILTER_Freebayes) %>%
+  mutate(f_MQMR = ifelse(is.na(f_MQMR), median(f_MQMR, na.rm = TRUE), f_MQMR)) %>%
+  ungroup() %>%
+  group_by(FILTER_Vardict) %>%
+  mutate(vd_SSF = ifelse(is.na(vd_SSF), median(vd_SSF, na.rm = TRUE), vd_SSF)) %>%
+  ungroup() %>%
+  group_by(FILTER_Vardict) %>%
+  mutate(vd_MSI = ifelse(is.na(vd_MSI), median(vd_MSI, na.rm = TRUE), vd_MSI)) %>%
+  ungroup() %>%
+  group_by(FILTER_Varscan) %>%
+  mutate(vs_SSC = ifelse(is.na(vs_SSC), median(vd_MSI, na.rm = TRUE), vs_SSC)) %>%
+  ungroup() %>%
+  group_by(FILTER_Varscan) %>%
+  mutate(vs_SPV = ifelse(is.na(vs_SPV), median(vs_SPV, na.rm = TRUE), vs_SPV)) %>%
+  ungroup()
 
 ```
 

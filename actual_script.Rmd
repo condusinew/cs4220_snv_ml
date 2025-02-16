@@ -75,17 +75,35 @@ df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
 
 #DATA IMPUTATION
 ```{r}
-#replace NAs
+#replace NAs w MEAN
 df3_narm <- df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
 
-df3 <- df3 %>% mutate_at(c('FILTER_Mutect2', 'FILTER_Freebayes', 'FILTER_Vardict', 'FILTER_Varscan'), as.numeric)
+#grouped replacing NAs w mean 
+df4 <- df3 %>%
+  group_by(FILTER_Mutect2) %>%
+  mutate(m2_MQ = ifelse(is.na(m2_MQ), mean(m2_MQ, na.rm = TRUE), m2_MQ)) |>
+  ungroup() %>%
+  group_by(FILTER_Freebayes) %>%
+  mutate(f_MQMR = ifelse(is.na(f_MQMR), mean(f_MQMR, na.rm = TRUE), f_MQMR)) %>%
+  ungroup() %>%
+  group_by(FILTER_Vardict) %>%
+  mutate(vd_SSF = ifelse(is.na(vd_SSF), mean(vd_SSF, na.rm = TRUE), vd_SSF)) %>%
+  ungroup() %>%
+  group_by(FILTER_Vardict) %>%
+  mutate(vd_MSI = ifelse(is.na(vd_MSI), mean(vd_MSI, na.rm = TRUE), vd_MSI)) %>%
+  ungroup() %>%
+  group_by(FILTER_Varscan) %>%
+  mutate(vs_SSC = ifelse(is.na(vs_SSC), mean(vd_MSI, na.rm = TRUE), vs_SSC)) %>%
+  ungroup() %>%
+  group_by(FILTER_Varscan) %>%
+  mutate(vs_SPV = ifelse(is.na(vs_SPV), mean(vs_SPV, na.rm = TRUE), vs_SPV)) %>%
+  ungroup()
 
-df3[, 13:18] <- scale(df3[, 13:18])
+
+```
 
 
-rm(all_df, alltruth_df)
 
-kNN(df3, variable = k=3)
 ```
 
 #MACHINE LEARNING 

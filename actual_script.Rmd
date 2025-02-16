@@ -132,8 +132,313 @@ write.table(my_predictions, "my-predictions.bed",row.names = F,col.names = F, se
 
 
 
+----------------------------------------------------------------------------------------------------------------------
+
+neha 
+
+-------------------------------------------------------------------------------------------------------------------------
 
 
+ALSOOOOO 
+
+for knn: 
+
+# Step 1: Install and load the VIM package if you haven't already
+install.packages("VIM")
+library(VIM)
+
+# Step 2: Perform KNN imputation only on specific variables
+data <- kNN(new_data, variable = c("EducationLevel", "DietPerception"), k = 5)
+
+# Step 3: Verify that missing values have been imputed
+summary(data)
+
+---
+getwd(title: "ML project"
+output: html_document
+date: "2025-02-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/FOR THE PROJECT")
+
+install.packages("readxl", "tidyverse", "caTools")
+
+install.packages("knitr") 
+
+
+install.packages("dplyr")
+
+
+library(dplyr)
+
+
+library(readxl)
+library(tidyverse)
+library(caTools)
+library(knitr)
+```
+
+#READING IN FILTER PREDICTIONS
+```{r}
+real1_df <- read.table("snv-parse-real1.txt", header = T)
+#real2.1_df <- read.table("snv-parse-real2_part1.txt", header = T)
+real2.1_df <- read.table("snv-parse-real2_part1.txt ", header = T)
+real2.2_df <- read.table("snv-parse-real2_part2.txt", header = T)
+
+syn1_df <- read.table("snv-parse-syn1.txt", header = T)
+syn2_df <- read.table("snv-parse-syn2.txt", header = T)
+syn3_df <- read.table("snv-parse-syn3.txt", header = T)
+syn4_df <- read.table("snv-parse-syn4.txt", header = T)
+syn5_df <- read.table("snv-parse-syn5.txt", header = T)
+
+all_df <- rbind(real1_df, real2.2_df, real2.2_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
+
+head(all_df)
+
+```
+
+
+```{r}
+
+#looking for NA's
+summary(all_df)
+
+
+
+```
+#READING IN TRUTHS
+
+```{r}
+
+file.exists("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/real1_truth.bed")
+
+
+```
+
+```{r}
+
+
+real1_truth <- as.data.frame(read.table("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/real1_truth.bed",
+                                       header = FALSE, sep="\t", stringsAsFactors=FALSE, quote=""))
+
+
+
+real2.1_truth <- as.data.frame(read.table("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/real2_truth_chr1to5.bed",
+                                          header = FALSE, sep="\t", stringsAsFactors=FALSE, quote=""))
+
+
+
+syn1_truth <- as.data.frame(read.table("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/syn1_truth.bed",
+                                       header = FALSE, sep="\t", stringsAsFactors=FALSE, quote=""))
+
+
+syn2_truth <- as.data.frame(read.table("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/syn2_truth.bed",
+                                       header = FALSE, sep="\t", stringsAsFactors=FALSE, quote=""))
+
+
+syn3_truth <- as.data.frame(read.table("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/syn3_truth.bed",
+                                       header = FALSE, sep="\t", stringsAsFactors=FALSE, quote=""))
+
+
+syn4_truth <- as.data.frame(read.table("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/syn4_truth.bed",
+                                       header = FALSE, sep="\t", stringsAsFactors=FALSE, quote=""))
+
+
+syn5_truth <- as.data.frame(read.table("C:/Users/nehar/OneDrive - Victoria University of Wellington - STUDENT/EXCHANGE/ACADEMICS/CS/syn5_truth.bed",
+                                       header = FALSE, sep="\t", stringsAsFactors=FALSE, quote=""))
+
+
+
+alltruth_df <- rbind(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
+
+
+names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
+
+
+
+
+head(alltruth_df)
+
+
+```
+
+```{r}
+
+#thought: should we weight the real information more?
+#GET RID OF CORREXT X AND Y
+#MAKE COLUMN ALL TRUE IN ALL TRUTH
+alltruth_df <- alltruth_df %>% mutate(TRUTH = TRUE)
+
+
+df3 <- all_df %>% 
+  left_join(alltruth_df, by=c('Chr','START_POS_REF', 'END_POS_REF'))
+
+
+all_df <- all_df %>%
+  left_join(alltruth_df %>% mutate(correct = TRUE), 
+            by = c("Chr", "START_POS_REF", "END_POS_REF")) 
+ 
+
+all_df <- all_df %>%
+  mutate(correct = any(alltruth_df$Chr == Chr & alltruth_df$START_POS_REF == START_POS_REF &
+                         alltruth_df$END_POS_REF == END_POS_REF))
+
+```
+
+
+
+#CREATING BENCHMARKS 
+
+## consensus between at least 2
+
+```{r}
+consensus_df <- all_df %>%
+  mutate(two_plus = rowSums(select(., FILTER_Mutect2, FILTER_Freebayes, FILTER_Varscan, FILTER_Vardict)) >= 2)
+```
+
+handelling missing data :)
+
+```{r}
+
+
+
+all_df <- all_df %>%
+  mutate(across(everything(), 
+                ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
+
+
+summary(all_df)
+
+
+
+
+```
+
+
+
+
+EDA:
+
+ok idk how helpful this one is: 
+
+```{r}
+
+  
+  install.packages("tidyverse")
+  
+  
+  install.packages("ggcorrplot")
+  
+  
+
+  library(tidyverse)
+  library(ggcorrplot)  # for correlation heatmap
+  
+ olumns
+  numeric_cols <- all_df %>% 
+    select(m2_MQ, f_MQMR, vs_SSC, vs_SPV, vd_SSF, vd_MSI)
+  
+
+  numeric_cols <- numeric_cols %>%
+    mutate(across(everything(), ~ifelse(is.na(.), median(., na.rm = TRUE), .)))
+  
+ 
+ 
+  cor_matrix <- cor(numeric_cols, use = "pairwise.complete.obs")
+  
+  
+  ggcorrplot(cor_matrix, lab = TRUE, type = "lower", title = "Correlation Matrix")
+  
+
+```
+
+eda: na values
+
+```{r}
+
+
+library(ggplot2)
+
+
+na_count <- sapply(all_df, function(x) sum(is.na(x)))
+na_percentage <- sapply(all_df, function(x) mean(is.na(x)))
+
+
+na_df <- data.frame(Column = names(na_percentage), NA_Percentage = na_percentage)
+ggplot(na_df, aes(x = reorder(Column, NA_Percentage), y = NA_Percentage)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "NA Distribution in Columns", x = "Columns", y = "Percentage of NAs") +
+  theme_minimal()
+
+
+missing_indicators <- all_df %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), 1, 0), .names = "missing_{.col}"))
+
+
+all_df_with_missing_indicators <- cbind(all_df, missing_indicators)
+
+head(all_df_with_missing_indicators)
+
+
+
+```
+
+
+
+#MACHINE LEARNING 
+
+```{r}
+
+
+install.packages("caTools")
+
+
+#update r before doing this one it had some major issues for me 
+
+install.packages("randomForest")
+
+library(randomForest)
+library(caTools)
+
+
+all_df <- all_df %>%
+  mutate(across(everything(), 
+                ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
+
+
+
+set.seed(123)
+
+#this is givign me a few errors - fixing 
+
+split <- sample.split(all_df$correct, SplitRatio = 0.8)
+training_set <- subset(all_df, split == TRUE)
+test_set <- subset(all_df, split == FALSE)
+
+
+rf_model <- randomForest(correct ~ ., data = training_set, importance = TRUE)
+
+test_predictions <- predict(rf_model, newdata = test_set)
+
+
+confusion_matrix <- table(test_set$correct, test_predictions)
+print(confusion_matrix)
+
+
+importance(rf_model)
+varImpPlot(rf_model)
+
+
+
+
+
+```
 
 
 

@@ -83,9 +83,9 @@ df3 <- df3 %>% mutate_at(c('FILTER_Mutect2', 'FILTER_Freebayes', 'FILTER_Vardict
 df3[, 13:18] <- scale(df3[, 13:18])
 
 
-rm(all_df, alltruth_df, real1_df, real2.1_df, syn1_df,syn2_df, syn3_df, syn4_df, syn5_df)
+rm(all_df, alltruth_df)
 
-kNN(df3, k=3)
+kNN(df3, variable = k=3)
 ```
 
 #MACHINE LEARNING 

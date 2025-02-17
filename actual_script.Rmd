@@ -4,10 +4,6 @@ output: html_document
 date: "2025-02-12"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 ```{r}
 setwd("/Users/cindyyu/Desktop/CS4220")
 library(readxl)
@@ -18,7 +14,7 @@ library(caTools)
 library(randomForest)
 library(caret)
 library(VIM)
-
+library(ggplot2)
 library(mice)
 ```
 
@@ -77,6 +73,64 @@ df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
 
 #DATA IMPUTATION
 ```{r}
+#SHOWING WHERE TRUE FALSES ARE
+#MUTECT
+df_m2na <- df3 |> 
+  group_by(FILTER_Mutect2, is.na(m2_MQ)) |>
+  tally() 
+
+colnames(df_m2na)<- c("FILTER_Mutect2","Is_NA","n")
+
+gg_m2na <- ggplot(df_m2na, aes(fill=Is_NA, y=n, x=FILTER_Mutect2)) + 
+    geom_bar(stat="identity", width = 0.7)
+
+#FREEBAYES
+df_fbna <- df3 |> 
+  group_by(FILTER_Freebayes, is.na(f_MQMR)) |>
+  tally() 
+
+colnames(df_fbna)<- c("FILTER_Freebayes","Is_NA","n")
+
+gg_fbna <- ggplot(df_fbna, aes(fill=Is_NA, y=n, x=FILTER_Freebayes)) + 
+    geom_bar(stat="identity", width = 0.7)
+
+
+#VARDICT
+df_vdna <- df3 |> 
+  group_by(FILTER_Vardict, is.na(vd_SSF), is.na(vd_MSI)) |>
+  tally() 
+
+df_vdna <- df_vdna[-3]
+colnames(df_vdna)<- c("FILTER_Vardict","Is_NA","n")
+
+#MENTION THAT NA IN SSV ALSO HAD NA IN MSI
+gg_vdna <- ggplot(df_vdna, aes(fill=Is_NA, y=n, x=FILTER_Vardict)) + 
+    geom_bar(stat="identity", width = 0.7)
+
+#VARSCAN
+df_vsna <- df3 |> 
+  group_by(FILTER_Varscan, is.na(vs_SPV), is.na(vs_SSC)) |>
+  tally() 
+
+df_vsna <- df_vsna[-3]
+colnames(df_vsna)<- c("FILTER_Varscan","Is_NA","n")
+
+#MENTION THAT NA IN SSV ALSO HAD NA IN MSI
+gg_vsna <- ggplot(df_vsna, aes(fill=Is_NA, y=n, x=FILTER_Varscan)) + 
+    geom_bar(stat="identity", width = 0.7)
+
+
+
+df3 %>%
+  ggplot(aes(x = FILTER_Mutect2, y = m2_MQ)) +
+  geom_bar(stat = "identity")
+
+
+```
+
+
+```{r}
+
 #replace NAs w MEAN
 df3_narm <- df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
 
@@ -127,6 +181,9 @@ df_groupmedian <- df3 %>%
 
 ```{r}
 md.pattern(df3)
+
+df_hmm <- df3[, 9:19]
+
 
 library(VIM)
 aggr_plot <- aggr(df3, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(df3), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))

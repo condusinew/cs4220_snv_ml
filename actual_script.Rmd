@@ -190,6 +190,8 @@ aggr_plot <- aggr(df3, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, lab
 
 ```
 
+
+
 ```{r}
 #missForest
 library(missForest)
@@ -220,6 +222,8 @@ write.table(completeData2, "impute_mice2.txt", row.names = F,col.names = F, sep=
 write.table(completeData3, "impute_mice3.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
 write.table(completeData4, "impute_mice4.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
 write.table(completeData5, "impute_mice5.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
+
+read.table("impute_mice5.txt", header = F, sep = ',')
 ```
 
 
@@ -530,47 +534,45 @@ head(all_df_with_missing_indicators)
 
 ```{r}
 
+#install.packages("randomForest")
 
-install.packages("caTools")
-
-
-#update r before doing this one it had some major issues for me 
-
-install.packages("randomForest")
-
-library(randomForest)
-library(caTools)
-
-
-all_df <- all_df %>%
-  mutate(across(everything(), 
-                ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
-
-
-
-set.seed(123)
-
-#this is givign me a few errors - fixing 
-
-split <- sample.split(all_df$correct, SplitRatio = 0.8)
-training_set <- subset(all_df, split == TRUE)
-test_set <- subset(all_df, split == FALSE)
-
-
-rf_model <- randomForest(correct ~ ., data = training_set, importance = TRUE)
-
-test_predictions <- predict(rf_model, newdata = test_set)
-
-
-confusion_matrix <- table(test_set$correct, test_predictions)
-print(confusion_matrix)
-
-
-importance(rf_model)
-varImpPlot(rf_model)
-
-
-
+  library(randomForest)
+  library(caTools)
+ 
+ 
+  all_df <- all_df %>%
+    mutate(across(everything(),
+                  ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
+ 
+ 
+  #converting to factor!!!!!
+ 
+  df3_narm$correct <- as.factor(df3_narm$TRUTH)
+ 
+  set.seed(123)
+ 
+ 
+  split <- sample.split(df3_narm$TRUTH, SplitRatio = 0.8)
+ 
+ 
+  training_set <- subset(df3_narm, split == TRUE)
+  test_set <- subset(df3_narm, split == FALSE)
+ 
+ 
+  #rf_model <- randomForest(correct ~ ., data = training_set, importance = TRUE)
+ 
+  rf_model <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
+ 
+ 
+  test_predictions <- predict(rf_model, newdata = test_set)
+ 
+  confusion_matrix <- table(test_set$TRUTH, test_predictions)
+  print(confusion_matrix)
+ 
+ 
+ 
+  importance(rf_model)
+  varImpPlot(rf_model)
 
 
 ```

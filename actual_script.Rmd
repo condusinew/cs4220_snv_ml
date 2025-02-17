@@ -29,7 +29,9 @@ syn4_df <- read.table("snv-parse-syn4.txt", header = T)
 syn5_df <- read.table("snv-parse-syn5.txt", header = T)
 
 all_df <- rbind(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
+
 rm(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
+
 ```
 
 #READING IN TRUTHS
@@ -419,7 +421,7 @@ df3 <- all_df %>%
 
 
 all_df <- all_df %>%
-  left_join(alltruth_df %>% mutate(correct = TRUE), 
+  left_join(alltruth_df %>% mutate(TRUTH = TRUE), 
             by = c("Chr", "START_POS_REF", "END_POS_REF")) 
  
 
@@ -547,7 +549,7 @@ head(all_df_with_missing_indicators)
  
   #converting to factor!!!!!
  
-  df3_narm$correct <- as.factor(df3_narm$TRUTH)
+  df3_narm$TRUTH <- as.factor(df3_narm$TRUTH)
  
   set.seed(123)
  
@@ -575,6 +577,30 @@ head(all_df_with_missing_indicators)
   varImpPlot(rf_model)
 
 
+  test_pred <- test_predictions
+  write.table(test_pred, "test_predictions_vector.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+  #test_pred <-read.table("REALtest_predictions.bed", sep="\t" )
+  
+  
+  #PREDICTIONS INTO BED
+  test_setnew <- test_set[,1:3] 
+  test_setnew$TRUTH <- test_pred
+  
+  test_setnew <- test_setnew |>
+    filter(TRUTH == TRUE)
+  
+  test_setnew <- test_setnew[1:3]
+  
+  
+  write.table(test_set, "REALtest_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+  
+  #TEST SET INTO BED
+testset_truth <- test_set[, -(4:18)] |>
+    filter(TRUTH == TRUE)
+  
+  
+  write.table(testset_truth, "REALtest_TRUTH.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
 

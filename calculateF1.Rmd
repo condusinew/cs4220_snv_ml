@@ -94,5 +94,12 @@ f1stats = calc.F1(mypred,truth)
 print(f1stats)
 
 ```
+```{r}
+truth = read.table('REALtest_TRUTH.bed', header = F)
+mypred = read.table("REALtest_predictions.bed", header = FALSE) #changed to header = false
+f1stats = calc.F1(mypred, truth)
+pred = mypred
+print(f1stats)
+```
 
 

@@ -1,0 +1,83 @@
+---
+title: "actualreal2part2"
+output: html_document
+date: "2025-02-17"
+---
+
+#DATA READ IN
+```{r}
+real2_2_df <- read.table("snv-parse-real2_part2.txt", header = T)
+```
+
+#DATA IMPUTATION
+
+```{r}
+
+
+real22_median <- real2_2_df %>%
+  group_by(FILTER_Mutect2) %>%
+  mutate(m2_MQ = ifelse(is.na(m2_MQ), median(m2_MQ, na.rm = TRUE), m2_MQ)) |>
+  ungroup() %>%
+  group_by(FILTER_Freebayes) %>%
+  mutate(f_MQMR = ifelse(is.na(f_MQMR), median(f_MQMR, na.rm = TRUE), f_MQMR)) %>%
+  ungroup() %>%
+  group_by(FILTER_Vardict) %>%
+  mutate(vd_SSF = ifelse(is.na(vd_SSF), median(vd_SSF, na.rm = TRUE), vd_SSF)) %>%
+  ungroup() %>%
+  group_by(FILTER_Vardict) %>%
+  mutate(vd_MSI = ifelse(is.na(vd_MSI), median(vd_MSI, na.rm = TRUE), vd_MSI)) %>%
+  ungroup() %>%
+  group_by(FILTER_Varscan) %>%
+  mutate(vs_SSC = ifelse(is.na(vs_SSC), median(vd_MSI, na.rm = TRUE), vs_SSC)) %>%
+  ungroup() %>%
+  group_by(FILTER_Varscan) %>%
+  mutate(vs_SPV = ifelse(is.na(vs_SPV), median(vs_SPV, na.rm = TRUE), vs_SPV)) %>%
+  ungroup()
+
+```
+
+```{r}
+#MEDIAN
+  set.seed(123)
+ 
+predicts <- predict(rf_model_median, newdata = real22_median)
+
+predicts
+
+
+#PREDICTIONS INTO BED
+left_merge <- real2_2_df[,1:3] 
+left_merge$TRUTH <- predicts
+
+left_merge <- left_merge |>
+  filter(TRUTH == TRUE)
+
+left_merge <- left_merge[1:3]
+
+
+write.table(left_merge, "real2part2_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+
+```
+```{r}
+real2_2_df_narm <- real2_2_df %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
+
+predicts_mean <- predict(rf_model_mice, newdata = real22_median)
+
+
+
+#PREDICTIONS INTO BED
+left_merge_mean <- real2_2_df[,1:3] 
+left_merge_mean$TRUTH <- predicts_mean
+
+left_merge_mean <- left_merge_mean |>
+  filter(TRUTH == TRUE)
+
+left_merge_mean <- left_merge_mean[1:3]
+
+left_merge_mean
+
+write.table(left_merge, "real2part2_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+```
+

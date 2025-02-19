@@ -279,7 +279,7 @@ library(rpart)
 
 #splitting
 #SOMEHOW REMOVE COLUMNS OF GENOME NUMBER AND CHR
-split_vals <- sample.split(df3_narm $TRUTH, SplitRatio = 0.80)
+split_vals <- sample.split(df3_narm$TRUTH, SplitRatio = 0.80)
 train_set <- subset(df3_narm, split_vals == TRUE)
 test_set <- subset(df3_narm, split_vals == FALSE)
 
@@ -309,6 +309,7 @@ write.table(my_predictions, "my-predictions.bed",row.names = F,col.names = F, se
 ```{r}
 df3_narm <- df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
  
+
 #converting to factor!!!!!
 df3_narm$TRUTH <- as.factor(df3_narm$TRUTH)
 
@@ -389,7 +390,8 @@ rf_model_median <- randomForest(
 
 
 #actually training
-rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
+training_featuresremoved <- training_set[, 13:20]
+rf_model_median <- randomForest(TRUTH ~ ., data = training_featuresremoved, ntree = 100, importance = TRUE)
 test_predictions_median <- predict(rf_model_median, newdata = test_set) #predicts
 confusion_matrix <- table(test_set$TRUTH, test_predictions_median)
 print(confusion_matrix)
@@ -417,6 +419,33 @@ testset_truth <- test_set[, -(4:18)] |>
 write.table(testset_truth, "mediantest_TRUTH",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
+```{r}
+test_set_real1 <- test_set |>
+  filter(Sample_Name == "icgc_cll-T") 
+test_predictions_median <- predict(rf_model_median, newdata = test_set_real1) #predicts
+
+confusion_matrix <- table(test_set_real1$TRUTH, test_predictions_median)
+print(confusion_matrix)
+
+
+test_set_notruth <- test_set[,-19]
+test_predictions_median <- predict(rf_model_median, newdata = test_set_notruth) #predicts
+
+confusion_matrix <- table(test_set$TRUTH, test_predictions_median)
+print(confusion_matrix)
+
+
+test_set_real1 <- test_set |>
+  filter(Sample_Name == "dream1-T") 
+test_predictions_median <- predict(rf_model_median, newdata = test_set_real1) #predicts
+
+confusion_matrix <- table(test_set_real1$TRUTH, test_predictions_median)
+print(confusion_matrix)
+
+```
+
+
+
 #MACHINE LEARNING MICE
 ```{r}
 
@@ -437,8 +466,7 @@ test_set <- subset(df_mice1, split == FALSE)
 
 rf_model_mice <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
 
-
-test_predictions_mice <- predict(rf_model_mice, newdata = test_set)
+test_predictions_mice <- predict(rf_model_mice, newdata = test_set_notruth)
 
 confusion_matrix_mice <- table(test_set$TRUTH, test_predictions_mice)
 print(confusion_matrix_mice)
@@ -538,16 +566,16 @@ training_set <- subset(df3_median, split == TRUE)
 test_set <- subset(df3_median, split == FALSE)
 
 # Train the weighted Random Forest model
-rf_model <- ranger(
+rf_model_median <- ranger(
   TRUTH ~ ., 
-  data = training_set, #remember to change this to training lol
+  data = training_setfeatures, #remember to change this to training lol
   case.weights = training_set$Freq, 
   num.trees = 100
 )
 
 print(rf_model)
 
-test_set_notruth <- test_set[,-19]
+test_set_notruth <- test_set[,-19] #removes truth(prob unnecessary)
 
 predictions <- predict(rf_model, data = test_set_notruth)
 

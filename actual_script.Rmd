@@ -601,3 +601,84 @@ print(confusion_matrix_median) #F1: 0.9926
 ```{r}
 importance(rf_model_mice)
 ```
+
+
+
+grid search 
+
+
+
+library(rpart)
+library(caTools)
+library(tidyr)
+
+# Define the grid of hyperparameters to search
+param_grid <- expand.grid(
+  cp = c(0.01, 0.05, 0.1, 0.2),        # Complexity parameter
+  maxdepth = c(3, 5, 7, 10),           # Maximum depth of tree
+  minsplit = c(20, 30, 40),            # Minimum number of observations required for a split
+  stringsAsFactors = FALSE
+)
+
+# Create empty list to store results
+results <- list()
+
+# Set up the data
+split_vals <- sample.split(df3_narm$TRUTH, SplitRatio = 0.80)
+train_set <- subset(df3_narm, split_vals == TRUE)
+test_set <- subset(df3_narm, split_vals == FALSE)
+
+train_set_split <- train_set[, -(1:8)]  # Removing unnecessary columns
+
+# Perform Grid Search
+for (i in 1:nrow(param_grid)) {
+  
+  # Extract hyperparameters from the grid
+  cp_value <- param_grid$cp[i]
+  maxdepth_value <- param_grid$maxdepth[i]
+  minsplit_value <- param_grid$minsplit[i]
+  
+  # Train the decision tree model with the current hyperparameters
+  mod_class <- rpart(as.factor(TRUTH) ~ ., 
+                     data = train_set_split,
+                     cp = cp_value,
+                     maxdepth = maxdepth_value,
+                     minsplit = minsplit_value)
+  
+  # Make predictions on the test set
+  result_class <- predict(mod_class, test_set, type = 'class')
+  
+  # Calculate performance metric (accuracy in this case)
+  accuracy <- sum(test_set$TRUTH == result_class) / nrow(test_set)
+  
+  # Store the result
+  results[[i]] <- list(
+    cp = cp_value,
+    maxdepth = maxdepth_value,
+    minsplit = minsplit_value,
+    accuracy = accuracy
+  )
+}
+
+# Convert results to a data frame
+results_df <- do.call(rbind, lapply(results, as.data.frame))
+
+# Find the best hyperparameters (highest accuracy)
+best_model <- results_df[which.max(results_df$accuracy), ]
+print(best_model)
+
+# Optional: Use the best hyperparameters to refit the model
+best_mod_class <- rpart(as.factor(TRUTH) ~ ., 
+                        data = train_set_split,
+                        cp = best_model$cp,
+                        maxdepth = best_model$maxdepth,
+                        minsplit = best_model$minsplit)
+
+# Make predictions with the best model
+final_result_class <- predict(best_mod_class, test_set, type = 'class')
+
+# Display confusion matrix for the best model
+table(test_set$TRUTH, final_result_class)
+
+
+

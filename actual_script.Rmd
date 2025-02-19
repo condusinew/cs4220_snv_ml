@@ -513,17 +513,8 @@ set.seed(123)
 split <- sample.split(df3_median$TRUTH, SplitRatio = 0.8)
 training_set <- subset(df3_median, split == TRUE)
 test_set <- subset(df3_median, split == FALSE)
-# 
-# class_counts <- table(df3_median$Sample_Name)
-# total_samples <- sum(class_counts)
-# num_classes <- length(class_counts)
-# class_weights <- total_samples / (num_classes * class_counts)
-# names(class_weights) <- levels(df3_median$Sample_Name)
-# print(class_weights)
 
-
-
-rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, classwt = class_weights, importance = TRUE)
+rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
 
 test_predictions_median <- predict(rf_model_median, newdata = test_set)
 
@@ -590,23 +581,23 @@ print(confusion_matrix_median) #F1: 0.9926
 
 #IDK HOW TO GET THIS WORKING BUT WE GOTTA GET IT
 ```{r}
-install.packages("pROC")
-library(pROC)
-
-length(test_set)
-
-roc_curve <- roc(test_set$TRUTH, test_predictions_median[, 4])
-
-#plott!!
-plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
-
-
-auc_value <- auc(roc_curve)
-print(paste("AUC: ", auc_value))
-
-
-confusion_matrix <- table(test_set$correct, predict(rf_model, newdata = test_set))
-print(confusion_matrix)
+# install.packages("pROC")
+# library(pROC)
+# 
+# length(test_set)
+# 
+# roc_curve <- roc(test_set$TRUTH, test_predictions_median[, 4])
+# 
+# #plott!!
+# plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
+# 
+# 
+# auc_value <- auc(roc_curve)
+# print(paste("AUC: ", auc_value))
+# 
+# 
+# confusion_matrix <- table(test_set$correct, predict(rf_model, newdata = test_set))
+# print(confusion_matrix)
 
 ```
 

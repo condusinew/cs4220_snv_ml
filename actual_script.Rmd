@@ -14,6 +14,7 @@ library(caret)
 library(VIM)
 library(ggplot2)
 library(mice)
+library(ranger)
 ```
 
 #READING IN FILTER PREDICTIONS, and MERGING THEM
@@ -70,21 +71,17 @@ jointruth<- function(truthdf, predsdf) {
 
 #joins for vcfs and truths
 df3 <- jointruth(alltruth_df, all_df)
-real1_df <- jointruth(real1_truth, real1_df)
-real2.1_df <- jointruth(real2.1_truth, real2.1_df)
-syn1_df <- jointruth(syn1_truth, syn1_df)
-syn2_df <- jointruth(syn2_truth, syn2_df)
-syn3_df <- jointruth(syn3_truth, syn3_df)
-syn4_df <- jointruth(syn4_truth, syn4_df)
-syn5_df <- jointruth(syn5_truth, syn5_df)
+# real1_df <- jointruth(real1_truth, real1_df)
+# real2.1_df <- jointruth(real2.1_truth, real2.1_df)
+# syn1_df <- jointruth(syn1_truth, syn1_df)
+# syn2_df <- jointruth(syn2_truth, syn2_df)
+# syn3_df <- jointruth(syn3_truth, syn3_df)
+# syn4_df <- jointruth(syn4_truth, syn4_df)
+# syn5_df <- jointruth(syn5_truth, syn5_df)
 ```
 
 #NUMBER OF POSITIONS AND PROPORTION OF VARIANTS
 ```{r}
-df3 |>
-  group_by(Sample_Name) |>
-  tally()
-
 counts <- df3 |>
   group_by(Sample_Name, TRUTH) |>
   tally()
@@ -96,8 +93,7 @@ ggplot(counts, aes(fill=TRUTH, y=n, x=Sample_Name)) +
 
 
 #DATA IMPUTATION
-
-##plotting, same group 
+##plotting, same group, medians
 ```{r}
 #SHOWING WHERE TRUE FALSES ARE BY STACKED BAR PLOT
 #sorry for the very inefficient code 
@@ -152,70 +148,9 @@ df3 %>%
 
 ```
 
-#REPLACE W MEDIAN BY GROUP
-```{r}
-
-#replace NAs w MEAN
-df3_narm <- df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
-
-# #grouped replacing NAs w mean 
-# df_groupmean <- df3 %>%
-#   group_by(FILTER_Mutect2) %>%
-#   mutate(m2_MQ = ifelse(is.na(m2_MQ), mean(m2_MQ, na.rm = TRUE), m2_MQ)) |>
-#   ungroup() %>%
-#   group_by(FILTER_Freebayes) %>%
-#   mutate(f_MQMR = ifelse(is.na(f_MQMR), mean(f_MQMR, na.rm = TRUE), f_MQMR)) %>%
-#   ungroup() %>%
-#   group_by(FILTER_Vardict) %>%
-#   mutate(vd_SSF = ifelse(is.na(vd_SSF), mean(vd_SSF, na.rm = TRUE), vd_SSF)) %>%
-#   ungroup() %>%
-#   group_by(FILTER_Vardict) %>%
-#   mutate(vd_MSI = ifelse(is.na(vd_MSI), mean(vd_MSI, na.rm = TRUE), vd_MSI)) %>%
-#   ungroup() %>%
-#   group_by(FILTER_Varscan) %>%
-#   mutate(vs_SSC = ifelse(is.na(vs_SSC), mean(vd_MSI, na.rm = TRUE), vs_SSC)) %>%
-#   ungroup() %>%
-#   group_by(FILTER_Varscan) %>%
-#   mutate(vs_SPV = ifelse(is.na(vs_SPV), mean(vs_SPV, na.rm = TRUE), vs_SPV)) %>%
-#   ungroup()
-
-df_groupmedian <- df3 %>%
-  group_by(FILTER_Mutect2) %>%
-  mutate(m2_MQ = ifelse(is.na(m2_MQ), median(m2_MQ, na.rm = TRUE), m2_MQ)) |>
-  ungroup() %>%
-  group_by(FILTER_Freebayes) %>%
-  mutate(f_MQMR = ifelse(is.na(f_MQMR), median(f_MQMR, na.rm = TRUE), f_MQMR)) %>%
-  ungroup() %>%
-  group_by(FILTER_Vardict) %>%
-  mutate(vd_SSF = ifelse(is.na(vd_SSF), median(vd_SSF, na.rm = TRUE), vd_SSF)) %>%
-  ungroup() %>%
-  group_by(FILTER_Vardict) %>%
-  mutate(vd_MSI = ifelse(is.na(vd_MSI), median(vd_MSI, na.rm = TRUE), vd_MSI)) %>%
-  ungroup() %>%
-  group_by(FILTER_Varscan) %>%
-  mutate(vs_SSC = ifelse(is.na(vs_SSC), median(vd_MSI, na.rm = TRUE), vs_SSC)) %>%
-  ungroup() %>%
-  group_by(FILTER_Varscan) %>%
-  mutate(vs_SPV = ifelse(is.na(vs_SPV), median(vs_SPV, na.rm = TRUE), vs_SPV)) %>%
-  ungroup()
-
-
-# df_groupmedian <- df3 %>%
-#   group_by(FILTER_Mutect2, FILTER_Freebayes, FILTER_Vardict, FILTER_Varscan) %>%
-#   summarize(median(m2_MQ))
-# 
-# df_groupmedian <- df3 %>%
-#   group_by(FILTER_Freebayes) %>%
-#   summarize(median(f_MQMR))
-```
-
 #MICE AGGR PLOT 
 ```{r}
-md.pattern(df3)
 
-df_hmm <- df3[, 9:19]
-
-library(VIM)
 aggr_plot <- aggr(df3, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(df3), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
 
 ```
@@ -226,10 +161,6 @@ aggr_plot <- aggr(df3, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, lab
 library(missForest)
 
 df3_features <- df3[13:19]
-# df3_features$FILTER_Mutect2 = as.factor(df3_features$FILTER_Mutect2)
-# df3_features$FILTER_Freebayes = as.factor(df3_features$FILTER_Freebayes)
-# df3_features$FILTER_Vardict = as.factor(df3_features$FILTER_Vardict)
-# df3_features$FILTER_Varscan = as.factor(df3_features$FILTER_Varscan)
 df3_features$TRUTH = as.factor(df3_features$TRUTH)
 
 library(mice)
@@ -240,137 +171,29 @@ summary(df3.mis)
 imputed_Data <- mice(df3.mis, m=5, maxit = 50, method = 'pmm', seed = 500)
 summary(imputed_Data)
 
-
 complete_data <- complete(imputed_Data, action = "long")
 
-# Compare variance before and after imputation
-var_original <- apply(df3, 2, var, na.rm = TRUE)
-var_imputed <- apply(complete_data, 2, var)
+#ITERATE THRU 
+mice1 <- complete(imputed_Data, 1)
+mice2 <- complete(imputed_Data, 2)
+mice3 <- complete(imputed_Data, 3)
+mice4 <- complete(imputed_Data, 4)
+mice5 <- complete(imputed_Data, 5)
 
-# Scatter plot to compare
-plot(var_original, var_imputed, main="Variance Comparison (Original vs. Imputed)")
-abline(0,1, col="red") # Ideal case where variance is preserved
-
-completeData1 <- complete(imputed_Data, 1)
-completeData2 <- complete(imputed_Data, 2)
-completeData3 <- complete(imputed_Data, 3)
-completeData4 <- complete(imputed_Data, 4)
-completeData5 <- complete(imputed_Data, 5)
-
-write.table(completeData1, "impute_mice1.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
-write.table(completeData2, "impute_mice2.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
-write.table(completeData3, "impute_mice3.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
-write.table(completeData4, "impute_mice4.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
-write.table(completeData5, "impute_mice5.txt", row.names = F,col.names = F, sep=",", quote=FALSE)
-
-read.table("impute_mice5.txt", header = F, sep = ',')
-```
-
-
-#MACHINE LEARNING RPART
-```{r}
-#remove chr and genomic start/stop
-
-library(rpart)
-
-#splitting
-#SOMEHOW REMOVE COLUMNS OF GENOME NUMBER AND CHR
-split_vals <- sample.split(df3_narm$TRUTH, SplitRatio = 0.80)
-train_set <- subset(df3_narm, split_vals == TRUE)
-test_set <- subset(df3_narm, split_vals == FALSE)
-
-train_set_split <- train_set[,-(1:8)]
-
-#model
-rpart(as.factor(TRUTH)~ ., data = train_set_split) -> mod_class
-predict(mod_class, test_set, type = 'class') -> result_class
-table(test_set$TRUTH, result_class)
-
-#refitting predictions to be bed file
-#REALIZED I SHOULDNT HAVE UPENDED TO DF3, BUT RATHER TEST SET!
-predictions <- data.frame(Chr = test_set$Chr,
-                          START_POS_REF = test_set$START_POS_REF,
-                          END_POS_REF = test_set$END_POS_REF, 
-                          TRUTH=result_class)
-
-predictions <- predictions |>
-  filter(TRUTH == TRUE) 
-
-my_predictions <- predictions[, -4]
-
-write.table(my_predictions, "my-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
-```
-
-#MACHINE LEARNING NARM
-```{r}
-df3_narm <- df3 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) 
- 
-
-#converting to factor!!!!!
-df3_narm$TRUTH <- as.factor(df3_narm$TRUTH)
-
-#split into test/train
-set.seed(123)
-split <- sample.split(df3_narm$TRUTH, SplitRatio = 0.8)
-
-training_set <- subset(df3_narm, split == TRUE)
-test_set <- subset(df3_narm, split == FALSE)
-
-#training model
-rf_model_mean <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
-
-#predict for test set
-test_predictions_mean <- predict(rf_model_mean, newdata = test_set)
-
-confusion_matrix_mean <- table(test_set$TRUTH, test_predictions_mean)
-print(confusion_matrix_mean) #F1: 0.9926
-
-
-importance(rf_model_mean)
-varImpPlot(rf_model) #unsure what this does
-
-
-test_pred <- test_predictions_mean
-# write.table(test_pred, "test_predictions_vector.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-
-#test_pred <-read.table("REALtest_predictions.bed", sep="\t" )
-
-
-#PREDICTIONS INTO BED
-test_setnew <- test_set[,1:3] #chromo and start/stops
-test_setnew$TRUTH <- test_pred #new col w preds
-
-#removes rows/cols so just variants
-test_setnew <- test_setnew |>
-  filter(TRUTH == TRUE)
-test_setnew <- test_setnew[1:3]
-  
-write.table(test_set, "meantest_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-  
-#TRUTH SET INTO BED
-testset_truth <- test_set[, -(4:18)] |>
-  filter(TRUTH == TRUE)
-  
-write.table(testset_truth, "meantest_TRUTH.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-```
-
-```{r}
 
 ```
 
-
-#MACHINE LEARNING SINGLE CASE IMPUTATION MEDIAN
+#MACHINE LEARNING SINGLE CASE IMPUTATION MEDIAN LOOK LATER
 ```{r}
 #processing + split into test/train
 df_groupmedian$TRUTH <- as.factor(df_groupmedian$TRUTH)
 set.seed(123)
-
 split <- sample.split(df_groupmedian$TRUTH, SplitRatio = 0.8)
 training_set <- subset(df_groupmedian, split == TRUE)
 test_set <- subset(df_groupmedian, split == FALSE)
 
 
-# Assign weights inversely proportional to sample size
+#ver1: weights inversely proportional to sample size
 sample_counts <- table(df_groupmedian$Sample_Name)
 weights <- max(sample_counts) / sample_counts
 
@@ -498,61 +321,54 @@ write.table(testset_truth, "REALtest_TRUTH.bed",row.names = F,col.names = F, sep
 ```
 #MODEL FOR MEDIAN IMPUTATION
 ```{r}
+library(ranger)
+set.seed(123)
 df3_median <- df3 %>% mutate_all(~ifelse(is.na(.x), median(.x, na.rm = TRUE), .x)) 
  
-  #converting to factor!!!!!
+#converting to factor!!!!!
 df3_median$TRUTH <- as.factor(df3_median$TRUTH)
 df3_median$Sample_Name <- as.factor(df3_median$Sample_Name)
 
-set.seed(123)
-
-split <- sample.split(df3_median$TRUTH, SplitRatio = 0.8)
-training_set <- subset(df3_median, split == TRUE)
-test_set <- subset(df3_median, split == FALSE)
-
-rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
-
-test_predictions_median <- predict(rf_model_median, newdata = test_set)
-
-confusion_matrix_median <- table(test_set$TRUTH, test_predictions_median)
-print(confusion_matrix_median) #F1: 0.9926
-
-```
-
-```{r}
-library(ranger)
-df3_median$TRUTH <- as.factor(df3_median$TRUTH)
-df3_median$Sample_Name <- as.factor(df3_median$Sample_Name)
-
-
-# Compute sample-level weights (inverse frequency)
+#compute sample weights (inverse frequency)
 sample_counts <- table(df3_median$Sample_Name)
-sample_weights <- max(sample_counts) / sample_counts
+sample_weights <- nrow(df3_median) / sample_counts
 
-# Compute mutation type-level weights
+#compute mutation type(inverse frequency)
 mutation_counts <- table(df3_median$TRUTH)
 mutation_weights <- max(mutation_counts) / mutation_counts
 
-# Assign combined case weights
+#combined case weights w/ sample*mutation
 names(case_weights) <- levels(df3_median$Sample_Name)
 case_weights <- sample_weights* mutation_weights
-
-
 case_weights <- as.data.frame(case_weights)
 names(case_weights) <- c('Sample_Name', 'Freq')
 
+#cahnging case weights 
 case_weights2 <- case_weights
 case_weights2[6,2] <- 2 #WITH DIFFERENT WEIGHTING
 
-
-df3_median <- df3_median %>%
-  left_join(case_weights, by = 'Sample_Name')
-
+#splitting dataset
 split <- sample.split(df3_median$TRUTH, SplitRatio = 0.8)
 training_set <- subset(df3_median, split == TRUE)
 test_set <- subset(df3_median, split == FALSE)
 
-# Train the weighted Random Forest model
+#make sure training only has necessary features
+```
+
+#TRAINING MODEL, RANDOM FOREST, NON-WEIGHTED
+```{r}
+#training, just RF
+rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
+
+#predictions w RF, not weighted
+test_predictions_median <- predict(rf_model_median, newdata = test_set)
+confusion_matrix_median <- table(test_set$TRUTH, test_predictions_median)
+print(confusion_matrix_median) #F1: 0.9926
+```
+
+#TRAINING MODEL, RANDOM FOREST, WEIGHTED
+```{r}
+#training weighted RF model
 rf_model_median <- ranger(
   TRUTH ~ ., 
   data = training_setfeatures, #remember to change this to training lol
@@ -562,8 +378,6 @@ rf_model_median <- ranger(
 
 print(rf_model)
 
-test_set_notruth <- test_set[,-19] #removes truth(prob unnecessary)
-
 predictions <- predict(rf_model, data = test_set_notruth)
 
 predicted_classes <- predictions$predictions
@@ -572,8 +386,9 @@ length(test_set_notruth$TRUTH)
 
 confusion_matrix_median <- table(test_set$TRUTH, predicted_classes)
 print(confusion_matrix_median) #F1: 0.9926
-```
 
+
+```
 
 #IDK HOW TO GET THIS WORKING BUT WE GOTTA GET IT
 ```{r}
@@ -607,16 +422,18 @@ importance(rf_model_mice)
 grid search 
 
 
-
+```{r}
 library(rpart)
 library(caTools)
 library(tidyr)
 
 # Define the grid of hyperparameters to search
+# oh we ran this previously with different params and got these best ones
+# and then did further optimization closer to the 'best' #
 param_grid <- expand.grid(
-  cp = c(0.01, 0.05, 0.1, 0.2),        # Complexity parameter
-  maxdepth = c(3, 5, 7, 10),           # Maximum depth of tree
-  minsplit = c(20, 30, 40),            # Minimum number of observations required for a split
+  cp = c(0.01, 0.05, 0.1, 0.2),        # Complexity paramete 0.01
+  maxdepth = c(3, 5, 7, 10),           # Maximum depth of tree 5
+  minsplit = c(10, 20, 30, 40),            # Minimum number of observations required for a split 10
   stringsAsFactors = FALSE
 )
 
@@ -681,4 +498,7 @@ final_result_class <- predict(best_mod_class, test_set, type = 'class')
 table(test_set$TRUTH, final_result_class)
 
 
+
+
+```
 

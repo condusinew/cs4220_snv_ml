@@ -18,7 +18,6 @@ library(mice)
 
 #READING IN FILTER PREDICTIONS, and MERGING THEM
 ```{r}
-
 real1_df <- read.table("snv-parse-real1.txt", header = T)
 real2.1_df <- read.table("snv-parse-real2_part1.txt", header = T)
 syn1_df <- read.table("snv-parse-syn1.txt", header = T)
@@ -28,7 +27,6 @@ syn4_df <- read.table("snv-parse-syn4.txt", header = T)
 syn5_df <- read.table("snv-parse-syn5.txt", header = T)
 
 all_df <- rbind(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
-vcf_list = list(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
 ```
 
 #READING IN TRUTHS, and MERGING THEM 
@@ -54,8 +52,6 @@ alltruth_df <- rbind(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_tr
 names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
 
 write.table(alltruth_df, "all_truths.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-
-truth_list = list(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
 ```
 
 #JOINS SETS SO THAT WE HAVE A TRUTH COL NEXT TO FEATURES

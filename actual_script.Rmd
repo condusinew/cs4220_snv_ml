@@ -28,9 +28,7 @@ syn4_df <- read.table("snv-parse-syn4.txt", header = T)
 syn5_df <- read.table("snv-parse-syn5.txt", header = T)
 
 all_df <- rbind(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
-
-rm(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
-
+vcf_list = list(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
 ```
 
 #READING IN TRUTHS, and MERGING THEM 
@@ -50,30 +48,64 @@ syn4_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn4/
                                 header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
 syn5_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn5/syn5_truth.bed",
                                 header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
+#might not need this
 alltruth_df <- rbind(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
 
 names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
 
 write.table(alltruth_df, "all_truths.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-rm(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
+
+truth_list = list(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
 ```
 
 #JOINS SETS SO THAT WE HAVE A TRUTH COL NEXT TO FEATURES
 ```{r}
-alltruth_df <- alltruth_df %>% mutate(TRUTH = TRUE)
 
-df3 <- all_df %>% 
-  left_join(alltruth_df, by=c('Chr','START_POS_REF', 'END_POS_REF'))
+#FOR JOINING TRUTH AND VCF FILES
+jointruth<- function(truthdf, predsdf) {
+  names(truthdf) <- c("Chr", "START_POS_REF", "END_POS_REF")
+  truthdf$TRUTH = TRUE
+  newdf <- predsdf %>% 
+    left_join(truthdf, by=c('Chr','START_POS_REF', 'END_POS_REF'))
+  newdf$TRUTH <- replace_na(newdf$TRUTH, FALSE)
+  return(newdf)
+}
 
-df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
 
+#joins for vcfs and truths
+df3 <- jointruth(alltruth_df, all_df)
+real1_df <- jointruth(real1_truth, real1_df)
+real2.1_df <- jointruth(real2.1_truth, real2.1_df)
+syn1_df <- jointruth(syn1_truth, syn1_df)
+syn2_df <- jointruth(syn2_truth, syn2_df)
+syn3_df <- jointruth(syn3_truth, syn3_df)
+syn4_df <- jointruth(syn4_truth, syn4_df)
+syn5_df <- jointruth(syn5_truth, syn5_df)
 ```
+
+#NUMBER OF POSITIONS AND PROPORTION OF VARIANTS
+```{r}
+df3 |>
+  group_by(Sample_Name) |>
+  tally()
+
+counts <- df3 |>
+  group_by(Sample_Name, TRUTH) |>
+  tally()
+
+ggplot(counts, aes(fill=TRUTH, y=n, x=Sample_Name)) + 
+    geom_bar(stat="identity", width = 0.7)
+```
+
+
 
 #DATA IMPUTATION
 
 ##plotting, same group 
 ```{r}
 #SHOWING WHERE TRUE FALSES ARE BY STACKED BAR PLOT
+#sorry for the very inefficient code 
+
 #MUTECT
 df_m2na <- df3 |> 
   group_by(FILTER_Mutect2, is.na(m2_MQ)) |>
@@ -172,13 +204,13 @@ df_groupmedian <- df3 %>%
   ungroup()
 
 
-df_groupmedian <- df3 %>%
-  group_by(FILTER_Mutect2, FILTER_Freebayes, FILTER_Vardict, FILTER_Varscan) %>%
-  summarize(median(m2_MQ))
-
-df_groupmedian <- df3 %>%
-  group_by(FILTER_Freebayes) %>%
-  summarize(median(f_MQMR))
+# df_groupmedian <- df3 %>%
+#   group_by(FILTER_Mutect2, FILTER_Freebayes, FILTER_Vardict, FILTER_Varscan) %>%
+#   summarize(median(m2_MQ))
+# 
+# df_groupmedian <- df3 %>%
+#   group_by(FILTER_Freebayes) %>%
+#   summarize(median(f_MQMR))
 ```
 
 #MICE AGGR PLOT 
@@ -325,6 +357,11 @@ testset_truth <- test_set[, -(4:18)] |>
 write.table(testset_truth, "meantest_TRUTH.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
+```{r}
+
+```
+
+
 #MACHINE LEARNING SINGLE CASE IMPUTATION MEDIAN
 ```{r}
 #processing + split into test/train
@@ -334,6 +371,21 @@ set.seed(123)
 split <- sample.split(df_groupmedian$TRUTH, SplitRatio = 0.8)
 training_set <- subset(df_groupmedian, split == TRUE)
 test_set <- subset(df_groupmedian, split == FALSE)
+
+
+# Assign weights inversely proportional to sample size
+sample_counts <- table(df_groupmedian$Sample_Name)
+weights <- max(sample_counts) / sample_counts
+
+# Train a weighted Random Forest
+rf_model_median <- randomForest(
+  TRUTH ~ ., 
+  data = training_set, 
+  ntree = 100, 
+  strata = df_groupmedian$Sample_Name, 
+  sampsize = rep(min(sample_counts), length(sample_counts)), 
+  importance = TRUE
+)
 
 
 #actually training
@@ -426,15 +478,24 @@ df3_median <- df3 %>% mutate_all(~ifelse(is.na(.x), median(.x, na.rm = TRUE), .x
  
   #converting to factor!!!!!
 df3_median$TRUTH <- as.factor(df3_median$TRUTH)
+df3_median$Sample_Name <- as.factor(df3_median$Sample_Name)
 
 set.seed(123)
 
 split <- sample.split(df3_median$TRUTH, SplitRatio = 0.8)
 training_set <- subset(df3_median, split == TRUE)
 test_set <- subset(df3_median, split == FALSE)
+# 
+# class_counts <- table(df3_median$Sample_Name)
+# total_samples <- sum(class_counts)
+# num_classes <- length(class_counts)
+# class_weights <- total_samples / (num_classes * class_counts)
+# names(class_weights) <- levels(df3_median$Sample_Name)
+# print(class_weights)
 
 
-rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
+
+rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, classwt = class_weights, importance = TRUE)
 
 test_predictions_median <- predict(rf_model_median, newdata = test_set)
 
@@ -442,6 +503,62 @@ confusion_matrix_median <- table(test_set$TRUTH, test_predictions_median)
 print(confusion_matrix_median) #F1: 0.9926
 
 ```
+
+```{r}
+library(ranger)
+df3_median$TRUTH <- as.factor(df3_median$TRUTH)
+df3_median$Sample_Name <- as.factor(df3_median$Sample_Name)
+
+
+# Compute sample-level weights (inverse frequency)
+sample_counts <- table(df3_median$Sample_Name)
+sample_weights <- max(sample_counts) / sample_counts
+
+# Compute mutation type-level weights
+mutation_counts <- table(df3_median$TRUTH)
+mutation_weights <- max(mutation_counts) / mutation_counts
+
+# Assign combined case weights
+names(case_weights) <- levels(df3_median$Sample_Name)
+case_weights <- sample_weights* mutation_weights
+
+
+case_weights <- as.data.frame(case_weights)
+names(case_weights) <- c('Sample_Name', 'Freq')
+
+case_weights2 <- case_weights
+case_weights2[6,2] <- 2 #WITH DIFFERENT WEIGHTING
+
+
+df3_median <- df3_median %>%
+  left_join(case_weights, by = 'Sample_Name')
+
+split <- sample.split(df3_median$TRUTH, SplitRatio = 0.8)
+training_set <- subset(df3_median, split == TRUE)
+test_set <- subset(df3_median, split == FALSE)
+
+# Train the weighted Random Forest model
+rf_model <- ranger(
+  TRUTH ~ ., 
+  data = training_set, #remember to change this to training lol
+  case.weights = training_set$Freq, 
+  num.trees = 100
+)
+
+print(rf_model)
+
+test_set_notruth <- test_set[,-19]
+
+predictions <- predict(rf_model, data = test_set_notruth)
+
+predicted_classes <- predictions$predictions
+print(predicted_classes)  # Displays predicted classes
+length(test_set_notruth$TRUTH)
+
+confusion_matrix_median <- table(test_set$TRUTH, predicted_classes)
+print(confusion_matrix_median) #F1: 0.9926
+```
+
 
 #IDK HOW TO GET THIS WORKING BUT WE GOTTA GET IT
 ```{r}

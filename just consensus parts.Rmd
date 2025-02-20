@@ -66,7 +66,6 @@ jointruth<- function(truthdf, predsdf) {
   return(newdf)
 }
 
-
 #joins for vcfs and truths
 df3 <- jointruth(alltruth_df, all_df)
 # real1_df <- jointruth(real1_truth, real1_df)
@@ -88,11 +87,11 @@ df3 <- jointruth(alltruth_df, all_df)
 vcfs_list <- list(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
 
 consensus_predict <- function(df){
-  consensus_df <- df |>
-    mutate(two_plus = rowSums(select(., FILTER_Mutect2, FILTER_Freebayes, FILTER_Varscan, FILTER_Vardict)) >= 2) |>
-    filter(two_plus == TRUE)
-  consensus_predictions <- consensus_df[, -4]
-  return(consensus_predictions)
+  consensus_df <- df |> 
+    mutate(two_plus = rowSums(across(c(FILTER_Mutect2, FILTER_Freebayes, FILTER_Varscan, FILTER_Vardict)), na.rm = TRUE) >= 2) |> 
+    filter(two_plus)
+  consensus_df <- consensus_df[, 1:3]
+  return(consensus_df)
 }
 
 #urgh loops arent working not worth it
@@ -114,7 +113,7 @@ write.table(consensus_syn5, "consensus_syn5.bed",row.names = F,col.names = F, se
 
 ```
 
-## find best languages
+## find best filters
 ```{r}
 #MUTECT2 F1 = 0.79
 m2_predictions <- all_df |>
@@ -141,7 +140,7 @@ vs_predictions <- all_df |>
 write.table(vs_predictions, "my-vs-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
-## CONSENSUS BETWEEN VARDICT AND MUTECT2, THE BEST ONES
+## test CONSENSUS BETWEEN VARDICT AND MUTECT2, THE BEST ONES
 ```{r}
 best_two_predict <- function(df){
   new_df <- df |> 

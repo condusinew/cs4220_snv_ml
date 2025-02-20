@@ -45,61 +45,85 @@ calc.F1 = function(pred,truth) {
 }
 
 
-# load ground truth and predictions FOR REAL1
-truth = read.table('all_truths.bed', header = F)
-mypred = read.table('my-predictions.bed', header = FALSE) #changed to header = false
 
-f1stats = calc.F1(mypred,truth)
-
-print(f1stats)
-
-
-# load ground truth and predictions (from consensus predictions)
-mypred = read.table('my-consensus-predictions.bed', header = FALSE) #changed to header = false
-f1stats = calc.F1(mypred,truth)
-
-print(f1stats)
+#load ground truth and predictions 
+truthr1 = read.table('/Users/cindyyu/Desktop/CS4220/Data/real1/real1_truth.bed', header = F)
+truthr2 = read.table('/Users/cindyyu/Desktop/CS4220/Data/real2_part1/real2_truth_chr1to5.bed', header = F)
+truths1 = read.table('/Users/cindyyu/Desktop/CS4220/Data/syn1/syn1_truth.bed', header = F)
+truths2 = read.table('/Users/cindyyu/Desktop/CS4220/Data/syn2/syn2_truth.bed', header = F)
+truths3 = read.table('/Users/cindyyu/Desktop/CS4220/Data/syn3/syn3_truth.bed', header = F)
+truths4 = read.table('/Users/cindyyu/Desktop/CS4220/Data/syn4/syn4_truth.bed', header = F)
+truths5 = read.table('/Users/cindyyu/Desktop/CS4220/Data/syn5/syn5_truth.bed', header = F)
 
 
-# load ground truth and predictions (from MUTECT predictions)
-mypred = read.table("my-m2-predictions.bed", header = FALSE) #changed to header = false
-f1stats = calc.F1(mypred,truth)
+#consensus predictions
+real1_consensus = read.table('consensus_real1.bed', header = FALSE) #changed to header = false
+real2.1_consensus = read.table('consensus_real2.1.bed', header = FALSE)
+syn1_consensus = read.table('consensus_syn1.bed', header = FALSE)
+syn2_consensus = read.table('consensus_syn2.bed', header = FALSE)
+syn3_consensus = read.table('consensus_syn3.bed', header = FALSE)
+syn4_consensus = read.table('consensus_syn4.bed', header = FALSE)
+syn5_consensus = read.table('consensus_syn5.bed', header = FALSE)
 
-print(f1stats)
-
-#FREEBAYES
-mypred = read.table("my-f-predictions.bed", header = FALSE) #changed to header = false
-f1stats = calc.F1(mypred,truth)
-
-print(f1stats)
-
-
-#VD
-mypred = read.table("my-vd-predictions.bed", header = FALSE) #changed to header = false
-f1stats = calc.F1(mypred,truth)
-
-print(f1stats)
-
-
-#VS
-mypred = read.table("my-vs-predictions.bed", header = FALSE) #changed to header = false
-f1stats = calc.F1(mypred,truth)
-
-print(f1stats)
-
-#BEST TWO
-mypred = read.table("best-two-predictions.bed", header = FALSE) #changed to header = false
-f1stats = calc.F1(mypred,truth)
-
-print(f1stats)
+#load best two predictions
+best_two_real1 = read.table('best_two_real1.bed', header = FALSE) #changed to header = false
+best_two_real2.1 = read.table('best_two_real2.1.bed', header = FALSE)
+best_two_syn1 = read.table('best_two_syn1.bed', header = FALSE)
+best_two_syn2 = read.table('best_two_syn2.bed', header = FALSE)
+best_two_syn3 = read.table('best_two_syn3.bed', header = FALSE)
+best_two_syn4 = read.table('best_two_syn4.bed', header = FALSE)
+best_two_syn5 = read.table('best_two_syn5.bed', header = FALSE)
 
 ```
 
+#TESTING CONSENSUS ACROSS TRUTH
 ```{r}
-truth = read.table('meantest_TRUTH.bed', header = F)
-mypred = read.table("meantest_predictions.bed", header = FALSE) #changed to header = false
-f1statsmean = calc.F1(mypred, truth)
+ #changed to header = false
+f1statsmean = calc.F1(real1_consensus, truthr1)
+print(f1statsmean)
+
+f1statsmean = calc.F1(real2.1_consensus, truthr2)
+print(f1statsmean)
+
+f1statsmean = calc.F1(syn1_consensus, truths1)
+print(f1statsmean)
+
+f1statsmean = calc.F1(syn2_consensus, truths2)
+print(f1statsmean)
+
+f1statsmean = calc.F1(syn3_consensus, truths3)
+print(f1statsmean)
+
+f1statsmean = calc.F1(syn4_consensus, truths4)
+print(f1statsmean)
+
+f1statsmean = calc.F1(syn5_consensus, truths5) #RERUN THIS ONE CINDY
+print(f1statsmean)
+
+```
+#TESTING BEST TWOS ACROSS TRUTH
+```{r}
+#REDO ALL THIS LOL
+
+f1statsmean = calc.F1(best_two_real1, truthr1)
+print(f1statsmean)
+
+f1statsmean = calc.F1(best_two_real2.1, truthr2)
+print(f1statsmean)
+
+f1statsmean = calc.F1(best_two_syn1, truths1)
+print(f1statsmean)
+
+f1statsmean = calc.F1(best_two_syn2, truths2)
+print(f1statsmean)
+
+f1statsmean = calc.F1(best_two_syn3, truths3)
+print(f1statsmean)
+
+f1statsmean = calc.F1(best_two_syn4, truths4)
+print(f1statsmean)
+
+f1statsmean = calc.F1(best_two_syn5, truths5)
 print(f1statsmean)
 ```
-
 

@@ -15,6 +15,10 @@ library(VIM)
 library(ggplot2)
 library(mice)
 library(ranger)
+
+
+library(rpart)
+library(tidyr)
 ```
 
 #READING IN FILTER PREDICTIONS, and MERGING THEM
@@ -88,8 +92,14 @@ counts <- df3 |>
 
 ggplot(counts, aes(fill=TRUTH, y=n, x=Sample_Name)) + 
     geom_bar(stat="identity", width = 0.7)
-```
 
+counts <- df3 |>
+  group_by(TRUTH) |>
+  tally()
+
+ggplot(counts, aes(y=n, x=TRUTH)) + 
+    geom_bar(stat="identity", width = 0.7)
+```
 
 
 #DATA IMPUTATION
@@ -160,6 +170,7 @@ aggr_plot <- aggr(df3, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, lab
 #missForest
 library(missForest)
 
+#RUN THIS EVEN IF UR RETRIEVING MICE FROM TEXT FILE
 df3_features <- df3[13:19]
 df3_features$TRUTH = as.factor(df3_features$TRUTH)
 
@@ -180,36 +191,44 @@ mice3 <- complete(imputed_Data, 3)
 mice4 <- complete(imputed_Data, 4)
 mice5 <- complete(imputed_Data, 5)
 
+#so i don't have to run mice each time 
+write.table(mice1, "mice1.txt",row.names = F,col.names = F, sep="\t", quote=FALSE)
+write.table(mice2, "mice2.txt",row.names = F,col.names = F, sep="\t", quote=FALSE)
+write.table(mice3, "mice3.txt",row.names = F,col.names = F, sep="\t", quote=FALSE)
+write.table(mice4, "mice4.txt",row.names = F,col.names = F, sep="\t", quote=FALSE)
+write.table(mice5, "mice5.txt",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
+#so we dont have to run impute each time
+mice1 <- read.table("mice1.txt", sep="\t")
+names(mice1) <- colnames(df3_features)
 ```
 
 #MACHINE LEARNING SINGLE CASE IMPUTATION MEDIAN LOOK LATER
-```{r}
+```{r, echo = skip}
 #processing + split into test/train
-df_groupmedian$TRUTH <- as.factor(df_groupmedian$TRUTH)
+mice1$TRUTH <- as.factor(mice1$TRUTH)
 set.seed(123)
-split <- sample.split(df_groupmedian$TRUTH, SplitRatio = 0.8)
-training_set <- subset(df_groupmedian, split == TRUE)
-test_set <- subset(df_groupmedian, split == FALSE)
-
+split <- sample.split(mice1$TRUTH, SplitRatio = 0.8)
+training_set <- subset(mice1, split == TRUE)
+test_set <- subset(mice1, split == FALSE)
+training_featuresremoved <- training_set[, 13:20]
 
 #ver1: weights inversely proportional to sample size
-sample_counts <- table(df_groupmedian$Sample_Name)
+sample_counts <- table(mice1$Sample_Name)
 weights <- max(sample_counts) / sample_counts
 
 # Train a weighted Random Forest
 rf_model_median <- randomForest(
   TRUTH ~ ., 
-  data = training_set, 
+  data = training_featuresremoved, 
   ntree = 100, 
-  strata = df_groupmedian$Sample_Name, 
+  strata = mice1$Sample_Name, 
   sampsize = rep(min(sample_counts), length(sample_counts)), 
   importance = TRUE
 )
 
 
 #actually training
-training_featuresremoved <- training_set[, 13:20]
 rf_model_median <- randomForest(TRUTH ~ ., data = training_featuresremoved, ntree = 100, importance = TRUE)
 test_predictions_median <- predict(rf_model_median, newdata = test_set) #predicts
 confusion_matrix <- table(test_set$TRUTH, test_predictions_median)
@@ -238,7 +257,7 @@ testset_truth <- test_set[, -(4:18)] |>
 write.table(testset_truth, "mediantest_TRUTH",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
-```{r}
+```{r, echo = skip}
 test_set_real1 <- test_set |>
   filter(Sample_Name == "icgc_cll-T") 
 test_predictions_median <- predict(rf_model_median, newdata = test_set_real1) #predicts
@@ -267,98 +286,134 @@ print(confusion_matrix)
 
 #MACHINE LEARNING MICE
 ```{r}
-
-set.seed(123)
-
-mice1 <- read.table('impute_mice1.txt', sep = ',', col.names = c("m2_MQ", "f_MQMR", "vs_SSC", "vs_SPV", "vd_SSF", "vs_MSI", "TRUTH"))
-
-df_mice1 <- df3
-df_mice1[13:19] <- mice1
-
-df_mice1$TRUTH <- as.factor(df_mice1$TRUTH)
-split <- sample.split(df_mice1$TRUTH, SplitRatio = 0.8)
-
-
-training_set <- subset(df_mice1, split == TRUE)
-test_set <- subset(df_mice1, split == FALSE)
-
-
-rf_model_mice <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
-
-test_predictions_mice <- predict(rf_model_mice, newdata = test_set_notruth)
-
-confusion_matrix_mice <- table(test_set$TRUTH, test_predictions_mice)
-print(confusion_matrix_mice)
-
-importance(rf_model)
-varImpPlot(rf_model)
-
-
-test_pred <- test_predictions
-write.table(test_pred, "test_predictions_vector.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-
-#test_pred <-read.table("REALtest_predictions.bed", sep="\t" )
+# 
+# set.seed(123)
+# 
+# mice1 <- read.table('impute_mice1.txt', sep = ',', col.names = c("m2_MQ", "f_MQMR", "vs_SSC", "vs_SPV", "vd_SSF", "vs_MSI", "TRUTH"))
+# 
+# df_mice1 <- df3
+# df_mice1[13:19] <- mice1
+# 
+# df_mice1$TRUTH <- as.factor(df_mice1$TRUTH)
+# split <- sample.split(df_mice1$TRUTH, SplitRatio = 0.8)
+# 
+# 
+# training_set <- subset(df_mice1, split == TRUE)
+# test_set <- subset(df_mice1, split == FALSE)
+# 
+# 
+# rf_model_mice <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
+# 
+# test_predictions_mice <- predict(rf_model_mice, newdata = test_set_notruth)
+# 
+# confusion_matrix_mice <- table(test_set$TRUTH, test_predictions_mice)
+# print(confusion_matrix_mice)
+# 
+# importance(rf_model)
+# varImpPlot(rf_model)
+# 
+# 
+# test_pred <- test_predictions
+# write.table(test_pred, "test_predictions_vector.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+# 
+# #test_pred <-read.table("REALtest_predictions.bed", sep="\t" )
 
 
 #PREDICTIONS INTO BED
-test_setnew <- test_set[,1:3] 
-test_setnew$TRUTH <- test_pred
-
-test_setnew <- test_setnew |>
-  filter(TRUTH == TRUE)
-
-test_setnew <- test_setnew[1:3]
-
-
-write.table(test_set, "REALtest_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-
-#TEST SET INTO BED
-testset_truth <- test_set[, -(4:18)] |>
-  filter(TRUTH == TRUE)
-
-
-write.table(testset_truth, "REALtest_TRUTH.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+# test_setnew <- test_set[,1:3] 
+# test_setnew$TRUTH <- test_pred
+# 
+# test_setnew <- test_setnew |>
+#   filter(TRUTH == TRUE)
+# 
+# test_setnew <- test_setnew[1:3]
+# 
+# 
+# write.table(test_set, "REALtest_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+# 
+# #TEST SET INTO BED
+# testset_truth <- test_set[, -(4:18)] |>
+#   filter(TRUTH == TRUE)
+# 
+# 
+# write.table(testset_truth, "REALtest_TRUTH.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
-#MODEL FOR MEDIAN IMPUTATION
+
+#FINDING CASE WEIGHTS
 ```{r}
-library(ranger)
+
 set.seed(123)
-df3_median <- df3 %>% mutate_all(~ifelse(is.na(.x), median(.x, na.rm = TRUE), .x)) 
+#df3_median <- df3 %>% mutate_all(~ifelse(is.na(.x), median(.x, na.rm = TRUE), .x)) 
  
-#converting to factor!!!!!
-df3_median$TRUTH <- as.factor(df3_median$TRUTH)
-df3_median$Sample_Name <- as.factor(df3_median$Sample_Name)
 
-#compute sample weights (inverse frequency)
-sample_counts <- table(df3_median$Sample_Name)
-sample_weights <- nrow(df3_median) / sample_counts
+find_case_weights <- function(df){
+  #case_weights <- data.frame()
+  df$Sample_Name <- df3$Sample_Name
+  df$TRUTH <- as.factor(df$TRUTH)
+  df$Sample_Name <- as.factor(df$Sample_Name)
 
-#compute mutation type(inverse frequency)
-mutation_counts <- table(df3_median$TRUTH)
-mutation_weights <- max(mutation_counts) / mutation_counts
+  #gotta be a better way to do this
+  
+  #weights depending on both sample and minority mutation class
+  sample_counts <- table(df$Sample_Name)
+  sample_counts <- as.data.frame(sample_counts)
+  sample_counts$Freq <- as.numeric(sample_counts$Freq)
+  sample_counts$weights <- max(sample_counts$Freq) / sample_counts$Freq
+  
+  mutation_counts <- table(df$TRUTH)
+  mutation_counts <- as.data.frame(mutation_counts)
+  
+  mutation_counts$Freq <- as.numeric(mutation_counts$Freq)
+  mutation_counts$weights <- max(mutation_counts$Freq) / mutation_counts$Freq
 
-#combined case weights w/ sample*mutation
-names(case_weights) <- levels(df3_median$Sample_Name)
-case_weights <- sample_weights* mutation_weights
-case_weights <- as.data.frame(case_weights)
-names(case_weights) <- c('Sample_Name', 'Freq')
+  sample_counts$case_weights <- sample_counts$weights*mutation_counts$weights
 
-#cahnging case weights 
-case_weights2 <- case_weights
-case_weights2[6,2] <- 2 #WITH DIFFERENT WEIGHTING
+  return(sample_counts)
+  
+}
+#every loop i make takes too long to figure out.
+#diff comboes of case weight based to discretion
+#im realizing this is / just . addign
+inc <- function(x, w){
+ return(x+w)
+}
 
-#splitting dataset
-split <- sample.split(df3_median$TRUTH, SplitRatio = 0.8)
-training_set <- subset(df3_median, split == TRUE)
-test_set <- subset(df3_median, split == FALSE)
+case_weights1 <- find_case_weights(mice1)
+case_weights1 <- case_weights1[,-(2:3)]
+names(case_weights1) <- c("Sample_Name", "Case_Weights")
+case_weights2 <- case_weights1
+case_weights3 <- case_weights1
+case_weights4 <- case_weights1
+case_weights5 <- case_weights1
 
-#make sure training only has necessary features
+#decrease real data
+case_weights2[1:4, 2] <- inc(case_weights2[1:4, 2], -1)
+
+#increase real data
+case_weights3[5:6, 2] <- inc(case_weights2[5:6, 2], 1)
+case_weights4[5:6, 2] <- inc(case_weights2[5:6, 2], 2)
+
+#make synth data = 1 
+case_weights5[1:4, 2] <- 1
+
+mice1$Sample_Name <- df3$Sample_Name
+
+mice1.1 <- mice1 %>% 
+    left_join(case_weights1, by="Sample_Name")
+mice1.2 <- mice1 %>% 
+    left_join(case_weights2, by="Sample_Name")
+mice1.3 <- mice1 %>% 
+    left_join(case_weights3, by="Sample_Name")
+mice1.4 <- mice1 %>% 
+    left_join(case_weights4, by="Sample_Name")
+mice1.5 <- mice1 %>% 
+    left_join(case_weights5, by="Sample_Name")
 ```
 
 #TRAINING MODEL, RANDOM FOREST, NON-WEIGHTED
 ```{r}
 #training, just RF
-rf_model_median <- randomForest(TRUTH ~ ., data = training_set, ntree = 100, importance = TRUE)
+rf_model_median <- randomForest(TRUTH ~ ., data = training_set_features, ntree = 100, importance = TRUE)
 
 #predictions w RF, not weighted
 test_predictions_median <- predict(rf_model_median, newdata = test_set)
@@ -371,82 +426,218 @@ print(confusion_matrix_median) #F1: 0.9926
 #training weighted RF model
 rf_model_median <- ranger(
   TRUTH ~ ., 
-  data = training_setfeatures, #remember to change this to training lol
-  case.weights = training_set$Freq, 
+  data = training_set_features, 
+  case.weights = training_set_features$Freq, 
   num.trees = 100
 )
 
 print(rf_model)
 
-predictions <- predict(rf_model, data = test_set_notruth)
-
+#predict w ranger
+predictions <- predict(rf_model, data = test_set)
 predicted_classes <- predictions$predictions
-print(predicted_classes)  # Displays predicted classes
-length(test_set_notruth$TRUTH)
 
 confusion_matrix_median <- table(test_set$TRUTH, predicted_classes)
-print(confusion_matrix_median) #F1: 0.9926
-
-
+print(confusion_matrix_median)
 ```
 
-#IDK HOW TO GET THIS WORKING BUT WE GOTTA GET IT
+
 ```{r}
-# install.packages("pROC")
-# library(pROC)
-# 
-# length(test_set)
-# 
-# roc_curve <- roc(test_set$TRUTH, test_predictions_median[, 4])
-# 
-# #plott!!
-# plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
-# 
-# 
-# auc_value <- auc(roc_curve)
-# print(paste("AUC: ", auc_value))
-# 
-# 
-# confusion_matrix <- table(test_set$correct, predict(rf_model, newdata = test_set))
-# print(confusion_matrix)
-
+importance(rf_model)
 ```
-
-=
-```{r}
-importance(rf_model_mice)
-```
-
 
 
 grid search 
-
-
 ```{r}
-library(rpart)
-library(caTools)
-library(tidyr)
-
 # Define the grid of hyperparameters to search
 # oh we ran this previously with different params and got these best ones
 # and then did further optimization closer to the 'best' #
+# param_grid <- expand.grid(
+#   cp = c(0.01, 0.02, 0.05, 0.1, 0.2),
+#   maxdepth = c(3, 5, 7, 9, 11), 
+#   minsplit = c(5, 10, 20, 30, 40), 
+#   weights = c(case_weights1, case_weights2, case_weights3, case_weights4, case_weights5),
+#   stringsAsFactors = FALSE
+# )
+# 
+# # Create empty list to store results
+# results <- list()
+# 
+# # Set up the data
+# split_vals <- sample.split(mice1.1$TRUTH, SplitRatio = 0.80)
+# train_set <- subset(mice1.1, split_vals == TRUE)
+# test_set <- subset(mice1.1, split_vals == FALSE)
+# 
+# train_set_split <- train_set[, -8]  # Removing unnecessary columns
+# 
+# # Perform Grid Search
+# for (i in 1:nrow(param_grid)) {
+#   
+#   # Extract hyperparameters from the grid
+#   cp_value <- param_grid$cp[i]
+#   maxdepth_value <- param_grid$maxdepth[i]
+#   minsplit_value <- param_grid$minsplit[i]
+#   weights <- param_grid$weights
+#   
+#   # Train the decision tree model with the current hyperparameters
+#   rf_model_ <- ranger(
+#     TRUTH ~ ., 
+#     data = train_set_split, 
+#     case.weights = train_set_split$Freq, 
+#     cp = cp_value,
+#     maxdepth = maxdepth_value,
+#     minsplit = minsplit_value,
+#     num.trees = 100
+#     )
+#   # 
+#   # mod_class <- rpart(as.factor(TRUTH) ~ ., 
+#   #                    data = train_set_split,
+#   #                    cp = cp_value,
+#   #                    maxdepth = maxdepth_value,
+#   #                    minsplit = minsplit_value
+#   #                    )
+#   
+#   # Make predictions on the test set
+#   result_class <- predict(mod_class, test_set, type = 'class')
+#   
+#   # Calculate performance metric (accuracy in this case)
+#   accuracy <- sum(test_set$TRUTH == result_class) / nrow(test_set)
+#   
+#   # Store the result
+#   results[[i]] <- list(
+#     cp = cp_value,
+#     maxdepth = maxdepth_value,
+#     minsplit = minsplit_value,
+#     accuracy = accuracy
+#   )
+# }
+# 
+# # Convert results to a data frame
+# results_df <- do.call(rbind, lapply(results, as.data.frame))
+# 
+# # Find the best hyperparameters (highest accuracy)
+# best_model <- results_df[which.max(results_df$accuracy), ]
+# print(best_model)
+# 
+# # Optional: Use the best hyperparameters to refit the model
+# best_mod_class <- rpart(as.factor(TRUTH) ~ ., 
+#                         data = train_set_split,
+#                         cp = best_model$cp,
+#                         maxdepth = best_model$maxdepth,
+#                         minsplit = best_model$minsplit)
+# 
+# # Make predictions with the best model
+# final_result_class <- predict(best_mod_class, test_set, type = 'class')
+# 
+# # Display confusion matrix for the best model
+# table(test_set$TRUTH, final_result_class)
+```
+#TRAINING MODEL, RANDOM FOREST, WEIGHTED
+```{r}
+# Define the grid of hyperparameters to search
+# oh we ran this previously with different params and got these best ones
+# and then did further optimization closer to the 'best' #
+
+mice_dfs = list(mice1.1, mice1.2, mice1.3, mice1.4, mice1.5)
+corresponding_weights = list("case_weights1","case_weights2","case_weights3","case_weights4","case_weights5")
+
+#empty df
+matrix <- matrix(nrow = 1, ncol = 4)
+col_names <- c("weight", "precision", "recall", "F1")
+results <- data.frame(matrix = matrix)
+colnames(results) <- col_names
+
+
+results <- data.frame(
+  "weight" = c(),
+  "precision" = c(),
+  "recall" = c(),
+  "F1" = c()
+)
+ 
+for (i in 1:5) {
+  
+  # Extract hyperparameters from the grid
+  df <- mice_dfs[i]
+  df <- df[[1]]
+
+  weights_value <- corresponding_weights[i]
+  
+  split_vals <- sample.split(df$TRUTH, SplitRatio = 0.80)
+  train_set <- subset(df, split_vals == TRUE)
+  test_set <- subset(df, split_vals == FALSE)
+
+  train_set_split <- train_set[, -8]
+  
+  # Train the decision tree model with the current hyperparameters
+  rf_model_weighted <- ranger(
+    TRUTH ~ ., 
+    data = train_set_split, 
+    case.weights = train_set_split$Case_Weights
+    )
+
+  #predict
+  result_class <- predict(rf_model_weighted, test_set)
+  
+  #calculate performance metric (accuracy in this case), but we should change to f1
+  TP <- sum(test_set$TRUTH == result_class$predictions)
+  FN <- sum(test_set$TRUTH != result_class$predictions & result_class$predictions == FALSE)
+  
+  
+  precision <- TP/(sum(result_class$predictions == TRUE))
+  recall <- sum(TP/(TP+FN))
+
+  F1 <- (2*precision*recall)/(precision+recall)
+  
+  #store result
+  results[i, 1] <- weights_value
+  results[i, 2] <- precision
+  results[i, 3] <- recall
+  results[i, 4] <- F1
+}
+
+#show iterated results
+results
+
+best_model <- results[which.max(results$V4)]
+print(best_model)
+
+# # Optional: Use the best hyperparameters to refit the model
+best_model_class <- ranger(
+      TRUTH ~ ., 
+      data = train_set_split, 
+      case.weights = train_set_split$Case_Weights
+    )
+
+# Make predictions with the best model
+final_result_class <- predict(best_mod_class, test_set, type = 'class')
+
+# Display confusion matrix for the best model
+table(test_set$TRUTH, final_result_class)
+
+```
+
+#TRAINING MODEL, RPART
+```{r}
+#results <- list()
+
 param_grid <- expand.grid(
-  cp = c(0.01, 0.05, 0.1, 0.2),        # Complexity paramete 0.01
-  maxdepth = c(3, 5, 7, 10),           # Maximum depth of tree 5
-  minsplit = c(10, 20, 30, 40),            # Minimum number of observations required for a split 10
+  cp = c(0.01, 0.05, 0.1),
+  maxdepth = c(3, 5, 7), 
+  minsplit = c(5, 10, 20), 
   stringsAsFactors = FALSE
 )
 
-# Create empty list to store results
-results <- list()
 
 # Set up the data
-split_vals <- sample.split(df3_narm$TRUTH, SplitRatio = 0.80)
-train_set <- subset(df3_narm, split_vals == TRUE)
-test_set <- subset(df3_narm, split_vals == FALSE)
+split_vals <- sample.split(mice1.1$TRUTH, SplitRatio = 0.80)
+train_set <- subset(mice1.1, split_vals == TRUE)
+test_set <- subset(mice1.1, split_vals == FALSE)
 
-train_set_split <- train_set[, -(1:8)]  # Removing unnecessary columns
+train_set_split <- train_set[, -(8:9)]  # Removing unnecessary columns
 
+
+results <- list()
 # Perform Grid Search
 for (i in 1:nrow(param_grid)) {
   
@@ -454,26 +645,36 @@ for (i in 1:nrow(param_grid)) {
   cp_value <- param_grid$cp[i]
   maxdepth_value <- param_grid$maxdepth[i]
   minsplit_value <- param_grid$minsplit[i]
+  weights_value <- param_grid$weights
   
   # Train the decision tree model with the current hyperparameters
-  mod_class <- rpart(as.factor(TRUTH) ~ ., 
+  mod_class <- randomForest(as.factor(TRUTH) ~ .,
                      data = train_set_split,
                      cp = cp_value,
                      maxdepth = maxdepth_value,
-                     minsplit = minsplit_value)
-  
+                     minsplit = minsplit_value
+                     )
+
   # Make predictions on the test set
   result_class <- predict(mod_class, test_set, type = 'class')
+
+  # Calculate performance metrics
   
-  # Calculate performance metric (accuracy in this case)
-  accuracy <- sum(test_set$TRUTH == result_class) / nrow(test_set)
-  
-  # Store the result
+  #calculate performance metric (accuracy in this case), but we should change to f1
+  TP <- sum(test_set$TRUTH == result_class)
+  FN <- sum(test_set$TRUTH != result_class & result_class == FALSE)
+  precision <- TP/(sum(result_class == TRUE))
+  recall <- sum(TP/(TP+FN))
+
+  F1 <- (2*precision*recall)/(precision+recall)
+
   results[[i]] <- list(
     cp = cp_value,
     maxdepth = maxdepth_value,
     minsplit = minsplit_value,
-    accuracy = accuracy
+    precision = precision,
+    recall = recall,
+    F1 = F1
   )
 }
 
@@ -497,8 +698,91 @@ final_result_class <- predict(best_mod_class, test_set, type = 'class')
 # Display confusion matrix for the best model
 table(test_set$TRUTH, final_result_class)
 
-
-
-
 ```
 
+
+
+
+#TRAINING MODEL, RPART
+```{r}
+
+# Create empty list to store results
+library(rpart)
+results <- list()
+
+param_grid <- expand.grid(
+  cp = c(0.01, 0.02, 0.05, 0.1, 0.2),
+  maxdepth = c(3, 5, 7, 9, 11), 
+  minsplit = c(5, 10, 20, 30, 40), 
+  stringsAsFactors = FALSE
+)
+
+
+# Set up the data
+split_vals <- sample.split(mice1.1$TRUTH, SplitRatio = 0.80)
+train_set <- subset(mice1.1, split_vals == TRUE)
+test_set <- subset(mice1.1, split_vals == FALSE)
+
+train_set_split <- train_set[, -8]  # Removing unnecessary columns
+
+# Perform Grid Search
+for (i in 1:nrow(param_grid)) {
+  
+  # Extract hyperparameters from the grid
+  cp_value <- param_grid$cp[i]
+  maxdepth_value <- param_grid$maxdepth[i]
+  minsplit_value <- param_grid$minsplit[i]
+  weights_value <- param_grid$weights
+  
+  # Train the decision tree model with the current hyperparameters
+  mod_class <- rpart(as.factor(TRUTH) ~ .,
+                     data = train_set_split,
+                     cp = cp_value,
+                     maxdepth = maxdepth_value,
+                     minsplit = minsplit_value
+                     )
+
+  # Make predictions on the test set
+  result_class <- predict(mod_class, test_set, type = 'class')
+  
+  # Calculate performance metrics
+  
+  #calculate performance metric (accuracy in this case), but we should change to f1
+  TP <- sum(test_set$TRUTH == result_class)
+  FN <- sum(test_set$TRUTH != result_class & result_class == FALSE)
+  
+  accuracy <- TP/sum(result_class == TRUE)
+  precision <- TP/(TP+FN)
+  F1 <- (2*precision*recall)/(precision+recall)
+  
+  # Store the result
+  results[[i]] <- list(
+    cp = cp_value,
+    maxdepth = maxdepth_value,
+    minsplit = minsplit_value,
+    accuracy = accuracy
+    precision = precision
+    F1 = F1
+  )
+}
+
+# Convert results to a data frame
+results_df <- do.call(rbind, lapply(results, as.data.frame))
+
+# Find the best hyperparameters (highest accuracy)
+best_model <- results_df[which.max(results_df$accuracy), ]
+print(best_model)
+
+# Optional: Use the best hyperparameters to refit the model
+best_mod_class <- rpart(as.factor(TRUTH) ~ ., 
+                        data = train_set_split,
+                        cp = best_model$cp,
+                        maxdepth = best_model$maxdepth,
+                        minsplit = best_model$minsplit)
+
+# Make predictions with the best model
+final_result_class <- predict(best_mod_class, test_set, type = 'class')
+
+# Display confusion matrix for the best model
+table(test_set$TRUTH, final_result_class)
+```

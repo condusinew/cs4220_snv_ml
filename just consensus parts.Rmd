@@ -14,7 +14,6 @@ library(readxl)
 library(tidyverse)
 
 #random forest
-library(VIM)
 library(dplyr)
 ```
 
@@ -51,19 +50,33 @@ syn5_truth <- as.data.frame(read.table("/Users/cindyyu/Desktop/CS4220/Data/syn5/
                                 header = FALSE, sep="\t",stringsAsFactors=FALSE, quote=""))
 alltruth_df <- rbind(real1_truth, real2.1_truth, syn1_truth, syn2_truth, syn3_truth, syn4_truth, syn5_truth)
 
-names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
+#names(alltruth_df) <- c("Chr", "START_POS_REF", "END_POS_REF")
 
-write.table(alltruth_df, "all_truths.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+#write.table(alltruth_df, "all_truths.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
 
 ```{r}
-alltruth_df <- alltruth_df %>% mutate(TRUTH = TRUE)
+jointruth<- function(truthdf, predsdf) {
+  names(truthdf) <- c("Chr", "START_POS_REF", "END_POS_REF")
+  truthdf$TRUTH = TRUE
+  newdf <- predsdf %>% 
+    left_join(truthdf, by=c('Chr','START_POS_REF', 'END_POS_REF'))
+  newdf$TRUTH <- replace_na(newdf$TRUTH, FALSE)
+  return(newdf)
+}
 
-df3 <- all_df %>% 
-  left_join(alltruth_df, by=c('Chr','START_POS_REF', 'END_POS_REF'))
 
-df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
+#joins for vcfs and truths
+df3 <- jointruth(alltruth_df, all_df)
+# real1_df <- jointruth(real1_truth, real1_df)
+# real2.1_df <- jointruth(real2.1_truth, real2.1_df)
+# syn1_df <- jointruth(syn1_truth, syn1_df)
+# syn2_df <- jointruth(syn2_truth, syn2_df)
+# syn3_df <- jointruth(syn3_truth, syn3_df)
+# syn4_df <- jointruth(syn4_truth, syn4_df)
+# syn5_df <- jointruth(syn5_truth, syn5_df)
+
 
 ```
 
@@ -72,13 +85,32 @@ df3$TRUTH <- replace_na(df3$TRUTH, FALSE)
 ## consensus between at least 2
 ```{r}
 #F1 = 0.02754307
-consensus_df <- all_df %>%
-  mutate(two_plus = rowSums(select(., FILTER_Mutect2, FILTER_Freebayes, FILTER_Varscan, FILTER_Vardict)) >= 2) |>
-  filter(two_plus == TRUE)
+vcfs_list <- list(real1_df, real2.1_df, syn1_df, syn2_df, syn3_df, syn4_df, syn5_df)
 
-consensus_predictions <- consensus_df[, -4]
+consensus_predict <- function(df){
+  consensus_df <- df |>
+    mutate(two_plus = rowSums(select(., FILTER_Mutect2, FILTER_Freebayes, FILTER_Varscan, FILTER_Vardict)) >= 2) |>
+    filter(two_plus == TRUE)
+  consensus_predictions <- consensus_df[, -4]
+  return(consensus_predictions)
+}
 
-write.table(consensus_predictions, "my-consensus-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+#urgh loops arent working not worth it
+consensus_real1 <- consensus_predict(real1_df)
+consensus_real2.1 <- consensus_predict(real2.1_df)
+consensus_syn1 <- consensus_predict(syn1_df)
+consensus_syn2 <- consensus_predict(syn2_df)
+consensus_syn3 <- consensus_predict(syn3_df)
+consensus_syn4 <- consensus_predict(syn4_df)
+consensus_syn5 <- consensus_predict(syn5_df)
+
+write.table(consensus_real1, "consensus_real1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(consensus_real2.1, "consensus_real2.1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(consensus_syn1, "consensus_syn1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(consensus_syn2, "consensus_syn2.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(consensus_syn3, "consensus_syn3.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(consensus_syn4, "consensus_syn4.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(consensus_syn5, "consensus_syn5.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
 
 ```
 
@@ -111,14 +143,30 @@ write.table(vs_predictions, "my-vs-predictions.bed",row.names = F,col.names = F,
 
 ## CONSENSUS BETWEEN VARDICT AND MUTECT2, THE BEST ONES
 ```{r}
+best_two_predict <- function(df){
+  new_df <- df |> 
+    filter(FILTER_Mutect2 == TRUE & FILTER_Vardict == TRUE)
+  return(new_df)
+}
+
 #F1 = 0.927
-best_two_df <- all_df %>%
-  filter(FILTER_Mutect2 == TRUE & FILTER_Vardict == TRUE)
 
-best_two_predictions <- best_two_df[, -4]
+best_two_real1 <- best_two_predict(real1_df)
+best_two_real2.1 <- best_two_predict(real2.1_df)
+best_two_syn1 <- best_two_predict(syn1_df)
+best_two_syn2 <- best_two_predict(syn2_df)
+best_two_syn3 <- best_two_predict(syn3_df)
+best_two_syn4 <- best_two_predict(syn4_df)
+best_two_syn5 <- best_two_predict(syn5_df)
 
-write.table(best_two_predictions, "best-two-predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
 
+write.table(best_two_real1, "best_two_real1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(best_two_real2.1, "best_two_real2.1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(best_two_syn1, "best_two_syn1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(best_two_syn2, "best_two_syn2.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(best_two_syn3, "best_two_syn3.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(best_two_syn4, "best_two_syn4.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
+write.table(best_two_syn5, "best_two_syn5.bed",row.names = F,col.names = F, sep="\t", quote=FALSE) 
 ```
 
 

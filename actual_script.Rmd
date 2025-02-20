@@ -204,7 +204,7 @@ names(mice1) <- colnames(df3_features)
 ```
 
 #MACHINE LEARNING SINGLE CASE IMPUTATION MEDIAN LOOK LATER
-```{r, echo = skip}
+```{r, eval = FALSE}
 #processing + split into test/train
 mice1$TRUTH <- as.factor(mice1$TRUTH)
 set.seed(123)
@@ -257,7 +257,7 @@ testset_truth <- test_set[, -(4:18)] |>
 write.table(testset_truth, "mediantest_TRUTH",row.names = F,col.names = F, sep="\t", quote=FALSE)
 ```
 
-```{r, echo = skip}
+```{r, eval = FALSE}
 test_set_real1 <- test_set |>
   filter(Sample_Name == "icgc_cll-T") 
 test_predictions_median <- predict(rf_model_median, newdata = test_set_real1) #predicts
@@ -541,6 +541,13 @@ grid search
 mice_dfs = list(mice1.1, mice1.2, mice1.3, mice1.4, mice1.5)
 corresponding_weights = list("case_weights1","case_weights2","case_weights3","case_weights4","case_weights5")
 
+#add mice chr start and stops... 
+#so that test set can have them from the start
+mice1.1$Chr <- df3$Chr 
+mice1.1$START_POS_REF <- df3$START_POS_REF
+mice1.1$END_POS_REF <- df3$END_POS_REF 
+
+
 #empty df
 matrix <- matrix(nrow = 1, ncol = 4)
 col_names <- c("weight", "precision", "recall", "F1")
@@ -610,11 +617,14 @@ best_model_class <- ranger(
     )
 
 # Make predictions with the best model
-final_result_class <- predict(best_mod_class, test_set, type = 'class')
+final_result_class <- predict(best_model_class, test_set)
 
 # Display confusion matrix for the best model
-table(test_set$TRUTH, final_result_class)
+table(test_set$TRUTH, final_result_class$predictions)
 
+#I NEED TO GET CHROMOS AND SHIT BACK HEREEE
+test_set$preds <- final_result_class$predictions
+test_set
 ```
 
 #TRAINING MODEL, RPART
@@ -622,11 +632,17 @@ table(test_set$TRUTH, final_result_class)
 #results <- list()
 
 param_grid <- expand.grid(
-  cp = c(0.01, 0.05, 0.1),
+  mtry = c(4, 5, 6),
   maxdepth = c(3, 5, 7), 
-  minsplit = c(5, 10, 20), 
+  num_trees = c(70, 100, 150),
   stringsAsFactors = FALSE
 )
+
+#add mice chr start and stops... 
+#so that test set can have them from the start
+mice1.1$Chr <- df3$Chr 
+mice1.1$START_POS_REF <- df3$START_POS_REF
+mice1.1$END_POS_REF <- df3$END_POS_REF 
 
 
 # Set up the data
@@ -634,44 +650,46 @@ split_vals <- sample.split(mice1.1$TRUTH, SplitRatio = 0.80)
 train_set <- subset(mice1.1, split_vals == TRUE)
 test_set <- subset(mice1.1, split_vals == FALSE)
 
-train_set_split <- train_set[, -(8:9)]  # Removing unnecessary columns
-
+train_set_split <- train_set[, -(8)]  # Removing unnecessary columns
+train_set_split <- train_set_split[, -(9:11)]
 
 results <- list()
+print("test1")
 # Perform Grid Search
 for (i in 1:nrow(param_grid)) {
   
   # Extract hyperparameters from the grid
-  cp_value <- param_grid$cp[i]
+  mtry_value <- param_grid$mtry[i]
   maxdepth_value <- param_grid$maxdepth[i]
-  minsplit_value <- param_grid$minsplit[i]
-  weights_value <- param_grid$weights
+  num_tree_value <- param_grid$num_trees[i]
+  print("test2")
   
   # Train the decision tree model with the current hyperparameters
-  mod_class <- randomForest(as.factor(TRUTH) ~ .,
-                     data = train_set_split,
-                     cp = cp_value,
-                     maxdepth = maxdepth_value,
-                     minsplit = minsplit_value
-                     )
+  rf_model_nonweighted <- ranger(
+    TRUTH ~ ., 
+    data = train_set_split, 
+    mtry = mtry_value,
+    max.depth = maxdepth_value,
+    num.trees = num_tree_value
+    )
+  print("test3")
 
   # Make predictions on the test set
-  result_class <- predict(mod_class, test_set, type = 'class')
+  result_class <- predict(rf_model_nonweighted, test_set)
+  print("test4")
 
-  # Calculate performance metrics
-  
-  #calculate performance metric (accuracy in this case), but we should change to f1
-  TP <- sum(test_set$TRUTH == result_class)
-  FN <- sum(test_set$TRUTH != result_class & result_class == FALSE)
-  precision <- TP/(sum(result_class == TRUE))
+  #calculate performance metric 
+  TP <- sum(test_set$TRUTH == result_class$predictions)
+  FN <- sum(test_set$TRUTH != result_class$predictions & result_class$predictions == FALSE)
+  precision <- TP/(sum(result_class$predictions == TRUE))
   recall <- sum(TP/(TP+FN))
 
   F1 <- (2*precision*recall)/(precision+recall)
 
   results[[i]] <- list(
-    cp = cp_value,
+    mtry = mtry_value,
     maxdepth = maxdepth_value,
-    minsplit = minsplit_value,
+    num_tree = num_tree_value,
     precision = precision,
     recall = recall,
     F1 = F1
@@ -682,21 +700,24 @@ for (i in 1:nrow(param_grid)) {
 results_df <- do.call(rbind, lapply(results, as.data.frame))
 
 # Find the best hyperparameters (highest accuracy)
-best_model <- results_df[which.max(results_df$accuracy), ]
+best_model <- results_df[which.max(results_df$F1), ]
 print(best_model)
 
 # Optional: Use the best hyperparameters to refit the model
-best_mod_class <- rpart(as.factor(TRUTH) ~ ., 
-                        data = train_set_split,
-                        cp = best_model$cp,
-                        maxdepth = best_model$maxdepth,
-                        minsplit = best_model$minsplit)
+best_model_unweight <- ranger(
+    TRUTH ~ ., 
+    data = train_set_split, 
+    mtry = mtry_value,
+    max.depth = maxdepth_value,
+    num.trees = num_tree_value
+    )
 
 # Make predictions with the best model
-final_result_class <- predict(best_mod_class, test_set, type = 'class')
+final_result_class <- predict(best_model_unweight, test_set)
 
-# Display confusion matrix for the best model
-table(test_set$TRUTH, final_result_class)
+results_df
+# Display confusion xxxxxmatrix for the best model
+table(test_set$TRUTH, final_result_class$predictions)
 
 ```
 

@@ -190,7 +190,7 @@ write.table(mice4, "mice4.txt",row.names = F,col.names = F, sep="\t", quote=FALS
 write.table(mice5, "mice5.txt",row.names = F,col.names = F, sep="\t", quote=FALSE)
 
 #so we dont have to run impute each time
-mice1 <- read.table("mice1.txt", sep="\t")
+#mice1 <- read.table("mice1.txt", sep="\t")
 names(mice1) <- colnames(df3_features)
 ```
 
@@ -362,6 +362,14 @@ best_model <- results[which.max(results$V4)]
 print(best_model)
 
 #best hyperparameters to refit the model
+#new train w weights
+split_vals <- sample.split(mice1.4$TRUTH, SplitRatio = 0.80)
+train_set <- subset(mice1.4, split_vals == TRUE)
+test_set_w <- subset(mice1.4, split_vals == FALSE)
+
+train_set_split <- train_set[, -8]
+train_set_split <- train_set_split[, -(9:11)]
+
 best_model_class <- ranger(
       TRUTH ~ ., 
       data = train_set_split, 
@@ -369,17 +377,17 @@ best_model_class <- ranger(
     )
 
 #predictions with the best model
-final_result_class <- predict(best_model_class, test_set)
+final_result_class <- predict(best_model_class, test_set_w)
 
 #confusion matrix for the best model
-table(test_set$TRUTH, final_result_class$predictions)
+table(test_set_w$TRUTH, final_result_class$predictions)
 
 #I NEED TO GET CHROMOS AND POSITIONS BACK HEREEE
 #and prepping to write the hyperparameter optimization df and also the predictions
-test_set$preds <- as.logical(final_result_class$predictions)
-test_set 
+test_set_w$preds <- as.logical(final_result_class$predictions)
+test_set_w 
 
-final_weighted_preds <- test_set[,-(1:9)]
+final_weighted_preds <- test_set_w[,-(1:9)]
 
 final_weighted_preds <- final_weighted_preds |>
   filter(preds == TRUE)
@@ -489,99 +497,174 @@ write.table(final_unweighted_preds, "unweighted_RF_predictions",row.names = F,co
 ###testing on dfs
 ```{r}
 # get predicteds 
-#VERY SORRY PROF. SKANDERUP MY LOOPS KEEP TALKING TOO LONG TO DEBUG 
+#VERY SORRY PROF. SKANDERUP MY LOOPS KEEP TALKING TOO LONG TO DEBUG AND CALC F1.RMD IS BUGGING
+#THIS DOES RESULT IN THE COMPARISON NEXT TO NAIVE BENCHMARKS IF YOURE WONDERING WHERE THAT DATA CAME FROM
+#We are trying very hard and likely inefficiently. Very sorry. Please tell us if any part of the code is confusing
 
+#REAL1
 preds_real1 <- test_set_u |> 
-  filter(Sample_Name == 'icgc_cll-T' & PREDICT == TRUE)
+  filter(Sample_Name == 'icgc_cll-T')
 
 truth_real1 <- test_set_u |> 
-  filter(Sample_Name == 'icgc_cll-T' & TRUTH == TRUE)
+  filter(Sample_Name == 'icgc_cll-T')
 
-write.table(preds_real1[,10:13], "preds_real1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(truth_real1[,10:13], "truth_real1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+confusionMatrix(as.factor(preds_real1$PREDICT), as.factor(truth_real1$TRUTH))
 
 
 #REAL2.1
 preds_real2.1 <- test_set_u |> 
-  filter(Sample_Name == 'icgc_mbl-T' & PREDICT == TRUE)
+  filter(Sample_Name == 'icgc_mbl-T')
 
 truth_real2.1 <- test_set_u |> 
-  filter(Sample_Name == 'icgc_mbl-T' & TRUTH == TRUE)
+  filter(Sample_Name == 'icgc_mbl-T')
 
-write.table(preds_real2.1[,10:13], "preds_real2.1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(truth_real2.1[,10:13], "truth_real2.1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+confusionMatrix(as.factor(preds_real2.1$PREDICT), as.factor(truth_real2.1$TRUTH))
+
 
 #SYN1
 preds_syn1 <- test_set_u |> 
-  filter(Sample_Name == 'dream1-T' & PREDICT == TRUE)
+  filter(Sample_Name == 'dream1-T')
 
 truth_syn1 <- test_set_u |> 
-  filter(Sample_Name == 'dream1-T' & TRUTH == TRUE)
+  filter(Sample_Name == 'dream1-T')
 
-write.table(preds_syn1[,10:13], "preds_syn1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(preds_syn1[,10:13], "truth_syn1.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+confusionMatrix(as.factor(preds_syn1$PREDICT), as.factor(truth_syn1$TRUTH))
+
 
 #SYN2
 preds_syn2 <- test_set_u |> 
-  filter(Sample_Name == 'dream2-T' & PREDICT == TRUE)
+  filter(Sample_Name == 'dream2-T')
 
 truth_syn2 <- test_set_u |> 
-  filter(Sample_Name == 'dream2-T' & TRUTH == TRUE)
+  filter(Sample_Name == 'dream2-T')
 
-write.table(preds_syn2[,10:13], "preds_syn2.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(preds_syn2[,10:13], "truth_syn2.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+confusionMatrix(as.factor(preds_syn2$PREDICT), as.factor(preds_syn2$TRUTH))
 
 #SYN3
 preds_syn3 <- test_set_u |> 
-  filter(Sample_Name == 'dream3-T' & PREDICT == TRUE)
+  filter(Sample_Name == 'dream3-T')
 
 truth_syn3 <- test_set_u |> 
-  filter(Sample_Name == 'dream3-T' & TRUTH == TRUE)
+  filter(Sample_Name == 'dream3-T')
 
-write.table(preds_syn3[,10:13], "preds_syn3.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(preds_syn3[,10:13], "truth_syn3.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-
+confusionMatrix(as.factor(preds_syn3$PREDICT), as.factor(truth_syn3$TRUTH))
 #SYN4
 preds_syn4 <- test_set_u |> 
-  filter(Sample_Name == 'dream4-T' & PREDICT == TRUE)
+  filter(Sample_Name == 'dream4-T')
 
 truth_syn4 <- test_set_u |> 
-  filter(Sample_Name == 'dream4-T' & TRUTH == TRUE)
+  filter(Sample_Name == 'dream4-T')
 
-write.table(preds_syn4[,10:13], "preds_syn4.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(preds_syn4[,10:13], "truth_syn4.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+confusionMatrix(as.factor(preds_syn4$PREDICT), as.factor(truth_syn4$TRUTH))
 
 #SYN5
 preds_syn5 <- test_set_u |> 
-  filter(Sample_Name == 'dream5-T' & PREDICT == TRUE)
+  filter(Sample_Name == 'dream5-T')
 
 truth_syn5 <- test_set_u |> 
-  filter(Sample_Name == 'dream5-T' & TRUTH == TRUE)
+  filter(Sample_Name == 'dream5-T')
 
-write.table(preds_syn5[,10:13], "preds_syn5.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(preds_syn5[,10:13], "truth_syn5.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+confusionMatrix(as.factor(preds_syn5$PREDICT), as.factor(truth_syn5$TRUTH))
 
   
 #REMEMBER TO PREDICT FOR REAL2PART2
 ```
 
+#WEIGHTED
+```{r}
+
+#REAL1
+wpreds_real1 <- test_set_w |> 
+  filter(Sample_Name == 'icgc_cll-T')
+
+wtruthreal1 <- test_set_w |> 
+  filter(Sample_Name == 'icgc_cll-T')
+
+confusionMatrix(as.factor(wpreds_real1$preds), as.factor(wtruthreal1$TRUTH))
+
+#REAL2.1
+wpreds_real2.1 <- test_set_w |> 
+  filter(Sample_Name == 'icgc_mbl-T')
+
+wtruthreal2.1 <- test_set_w |> 
+  filter(Sample_Name == 'icgc_mbl-T')
+
+confusionMatrix(as.factor(wpreds_real2.1$preds), as.factor(wtruthreal2.1$TRUTH))
+
+#SYN1
+wpreds_syn1 <- test_set_w |> 
+  filter(Sample_Name == 'dream1-T')
+
+wtruthsyn1 <- test_set_w |> 
+  filter(Sample_Name == 'dream1-T')
+
+confusionMatrix(as.factor(wpreds_syn1$preds), as.factor(wtruthsyn1$TRUTH))
 
 
+#SYN2
+wpreds_syn2 <- test_set_w |> 
+  filter(Sample_Name == 'dream2-T')
+
+wtruthsyn2 <- test_set_w |> 
+  filter(Sample_Name == 'dream2-T')
+
+confusionMatrix(as.factor(wpreds_syn2$preds), as.factor(wtruthsyn2$TRUTH))
+
+#SYN3
+wpreds_syn3 <- test_set_w |> 
+  filter(Sample_Name == 'dream3-T')
+
+wtruthsyn3 <- test_set_w |> 
+  filter(Sample_Name == 'dream3-T')
+
+confusionMatrix(as.factor(wpreds_syn3$preds), as.factor(wtruthsyn3$TRUTH))
+
+#SYN4
+wpreds_syn4 <- test_set_w |> 
+  filter(Sample_Name == 'dream4-T')
+
+wtruthsyn4 <- test_set_w |> 
+  filter(Sample_Name == 'dream4-T')
+
+confusionMatrix(as.factor(wpreds_syn4$preds), as.factor(wtruthsyn4$TRUTH))
+
+#SYN5
+wpreds_syn5 <- test_set_w |> 
+  filter(Sample_Name == 'dream5-T')
+
+wtruthsyn5 <- test_set_w |> 
+  filter(Sample_Name == 'dream5-T')
+
+confusionMatrix(as.factor(wpreds_syn5$preds), as.factor(wtruthsyn5$TRUTH))
+
+```
+
+
+#PREDICTING REAL 2 PART 2
 
 ```{r}
 #NEED TO IMPUTE REAL2 PART 2 AND TEST BOTH MODELS 
+#RUN THIS EVEN IF UR RETRIEVING MICE FROM TEXT FILE
+syn2.2_df <- read.table("snv-parse-real2_part2.txt", header = T)
 
+syn2.2_features <- df3[13:19] #make sure u dont train on other data for mice
 
+#seed 10% missing values
+syn2.2.mis <- prodNA(syn2.2_features, noNA = 0.1)
+summary(syn2.2.mis)
 
-#TRAINING REAL 2 PART 2
-split_vals <- sample.split(mice1.1$TRUTH, SplitRatio = 0.80)
-train_set <- subset(mice1.1, split_vals == TRUE)
-test_set_u <- subset(mice1.1, split_vals == FALSE)
+imputed_Data <- mice(syn2.2.mis, m=5, maxit = 50, method = 'pmm', seed = 500)
+summary(imputed_Data)
 
-train_set_split <- train_set[, -(8)]  # Removing unnecessary columns
-train_set_split <- train_set_split[, -(9:11)]
+complete_data <- complete(imputed_Data, action = "long")
 
+mice1two <- complete(imputed_Data, 1)
+mice2two <- complete(imputed_Data, 2)
+mice3two <- complete(imputed_Data, 3)
+mice4two <- complete(imputed_Data, 4)
+mice5two <- complete(imputed_Data, 5)
 
-final_result_class_2 <- predict(best_model_unweight, test_set_u)
+real2.2preds_unweight <- predict(best_model_unweight, mice1two)
+real2.2preds_weight <- predict(best_model_weight, mice1two)
 ```
 

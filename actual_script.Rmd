@@ -390,8 +390,14 @@ final_weighted_preds <- test_set_w[,-(1:9)]
 final_weighted_preds <- final_weighted_preds |>
   filter(preds == TRUE)
 
+#grid search
 write.table(results, "weighted_RF_results",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(final_weighted_preds, "weighted_RF_predictions",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+#predicts
+write.table(final_weighted_preds[1:3], "weighted_RF_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+
+
 ```
 
 #TRAINING MODEL, UNWEIGHTED RF
@@ -485,8 +491,11 @@ final_unweighted_preds <- test_set_u
 final_unweighted_preds <- final_unweighted_preds |>
   filter(PREDICT == TRUE)
 
-write.table(results_df_2, "unweighted_RF_results",row.names = F,col.names = F, sep="\t", quote=FALSE)
-write.table(final_unweighted_preds, "unweighted_RF_predictions",row.names = F,col.names = F, sep="\t", quote=FALSE)
+#grid search results
+write.table(results_df_2, "unweighted_RF_results.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+#predicts
+write.table(final_unweighted_preds[10:12], "unweighted_RF_predictions.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
 ```
 
 

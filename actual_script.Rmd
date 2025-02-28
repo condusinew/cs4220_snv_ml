@@ -291,9 +291,7 @@ mice1.5$END_POS_REF <- df3$END_POS_REF
 
 #TRAINING MODEL, RANDOM FOREST, WEIGHTED
 ```{r}
-# Define the grid of hyperparameters to search
-# oh we ran this previously with different params and got these best ones
-# and then did further optimization closer to the 'best' #
+# define grid of hyperparameters to search
 
 mice_dfs = list(mice1.1, mice1.2, mice1.3, mice1.4, mice1.5)
 corresponding_weights = list("case_weights1","case_weights2","case_weights3","case_weights4","case_weights5")
@@ -318,7 +316,7 @@ results <- data.frame(
  
 for (i in 1:5) {
   
-  # Extract hyperparameters from the grid
+  #extract hyperparameters 
   df <- mice_dfs[i]
   df <- df[[1]]
 
@@ -331,7 +329,7 @@ for (i in 1:5) {
   train_set_split <- train_set[, -8]
   train_set_split <- train_set_split[, -(9:11)]
   
-  # Train the decision tree model with the current hyperparameters
+  #train the tree model with hyperparameters
   rf_model_weighted <- ranger(
     TRUTH ~ ., 
     data = train_set_split, 
@@ -414,24 +412,24 @@ mice1.1$START_POS_REF <- df3$START_POS_REF
 mice1.1$END_POS_REF <- df3$END_POS_REF 
 
 
-# set up the data
+#set up the data
 split_vals <- sample.split(mice1.1$TRUTH, SplitRatio = 0.80)
 train_set <- subset(mice1.1, split_vals == TRUE)
 test_set_u <- subset(mice1.1, split_vals == FALSE)
 
-train_set_split <- train_set[, -(8)]  # Removing unnecessary columns
+train_set_split <- train_set[, -(8)]  #removing unnecessary columns
 train_set_split <- train_set_split[, -(9:11)]
 
 results <- list()
-# Perform Grid Search
+#perform Grid Search
 for (i in 1:nrow(param_grid)) {
   
-  # Extract hyperparameters from the grid
+  #extract hyperparameters from the grid
   mtry_value <- param_grid$mtry[i]
   maxdepth_value <- param_grid$maxdepth[i]
   num_tree_value <- param_grid$num_trees[i]
   
-  # Train the decision tree model with the current hyperparameters
+  #train the decision tree model with the current hyperparameters
   rf_model_nonweighted <- ranger(
     TRUTH ~ ., 
     data = train_set_split, 
@@ -440,7 +438,7 @@ for (i in 1:nrow(param_grid)) {
     num.trees = num_tree_value
     )
 
-  # Make predictions on the test set
+  #make predictions on the test set
   result_class <- predict(rf_model_nonweighted, test_set)
 
   #calculate performance metric 
@@ -461,10 +459,10 @@ for (i in 1:nrow(param_grid)) {
   )
 }
 
-# Convert results to a data frame
+#convert results to a data frame
 results_df_2 <- do.call(rbind, lapply(results, as.data.frame))
 
-# Find the best hyperparameters (highest accuracy)
+#find the best hyperparameters (highest accuracy)
 best_model <- results_df_2[which.max(results_df_2$F1), ]
 print(best_model)
 
@@ -477,7 +475,7 @@ best_model_unweight <- ranger(
     num.trees = best_model$num_tree
     )
 
-#  with the best model
+# with the best model
 final_result_class_2 <- predict(best_model_unweight, test_set_u)
 
 test_set_u$PREDICT <- as.logical(final_result_class_2$predictions)
@@ -495,6 +493,7 @@ write.table(final_unweighted_preds, "unweighted_RF_predictions",row.names = F,co
 # PREDICTING W/ BEST HYPERPARAMS ON THE 5 DATASETS + REAL2_PART2
 ##UNWEIGHTED
 ###testing on dfs
+#CHECKING RESULTS VIA CONFUSION MATRIX, FILTERED BY SAMPLE TO GET EACH DATASET
 ```{r}
 # get predicteds 
 #VERY SORRY PROF. SKANDERUP MY LOOPS KEEP TALKING TOO LONG TO DEBUG AND CALC F1.RMD IS BUGGING
@@ -571,7 +570,7 @@ confusionMatrix(as.factor(preds_syn5$PREDICT), as.factor(truth_syn5$TRUTH))
 #REMEMBER TO PREDICT FOR REAL2PART2
 ```
 
-#WEIGHTED
+#WEIGHTED: CHECKING RESULTS VIA CONFUSION MATRIX, FILTERED BY SAMPLE TO GET EACH DATASET
 ```{r}
 
 #REAL1

@@ -548,6 +548,7 @@ truth_syn3 <- test_set_u |>
   filter(Sample_Name == 'dream3-T')
 
 confusionMatrix(as.factor(preds_syn3$PREDICT), as.factor(truth_syn3$TRUTH))
+
 #SYN4
 preds_syn4 <- test_set_u |> 
   filter(Sample_Name == 'dream4-T')
@@ -647,7 +648,7 @@ confusionMatrix(as.factor(wpreds_syn5$preds), as.factor(wtruthsyn5$TRUTH))
 #RUN THIS EVEN IF UR RETRIEVING MICE FROM TEXT FILE
 syn2.2_df <- read.table("snv-parse-real2_part2.txt", header = T)
 
-syn2.2_features <- df3[13:19] #make sure u dont train on other data for mice
+syn2.2_features <- syn2.2_df[,13:18] #make sure u dont train on other data for mice
 
 #seed 10% missing values
 syn2.2.mis <- prodNA(syn2.2_features, noNA = 0.1)
@@ -664,7 +665,23 @@ mice3two <- complete(imputed_Data, 3)
 mice4two <- complete(imputed_Data, 4)
 mice5two <- complete(imputed_Data, 5)
 
-real2.2preds_unweight <- predict(best_model_unweight, mice1two)
-real2.2preds_weight <- predict(best_model_weight, mice1two)
+syn2.2_df[,13:18] <- mice1two
+
+mice1two_w <- syn2.2_df %>% 
+    left_join(case_weights4, by="Sample_Name")
+
+real2.2preds_weight <- predict(best_model_class, mice1two_w)
+
+
+
+syn2.2_df$PREDICTS <- real2.2preds_weight$predictions
+
+final2.2_weighted_preds <- syn2.2_df |>
+  filter(PREDICTS == TRUE)
+
+
+write.table(final2.2_weighted_preds[1:3], "weighted_2.2_results.bed",row.names = F,col.names = F, sep="\t", quote=FALSE)
+
+
 ```
 
